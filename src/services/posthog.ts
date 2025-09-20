@@ -90,6 +90,7 @@ const getCoreSystemTables = (): TableInfo[] => [
     { name: 'Persons', id: 'persons' },
     { name: 'Cohort People', id: 'cohort_people' },
     { name: 'Groups', id: 'groups' },
+    { name: 'Sessions', id: 'sessions' }, // Added Sessions table
 ];
 
 // Combined function to fetch all available tables (warehouse and system)
