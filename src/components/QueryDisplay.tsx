@@ -87,7 +87,7 @@ export const QueryDisplay = ({ title, query, projectId, apiKey, region, refetchI
       <div className="flex items-center mb-4">
         <h3 className="text-xl font-semibold">{title}</h3>
         {refetchInterval > 0 && (
-          <span className="ml-4 font-mono text-sm text-muted-foreground w-[4ch]">{timerVisual}</span>
+          <span className="ml-4 font-mono text-sm text-muted-foreground w-[5ch] whitespace-pre">{timerVisual}</span>
         )}
       </div>
       {renderContent()}
