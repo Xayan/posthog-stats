@@ -11,15 +11,17 @@ interface ApiConfig {
 }
 
 const getEnvConfig = (): ApiConfig | null => {
-    const projectId = import.meta.env.VITE_POSTHOG_PROJECT_ID;
-    const apiKey = import.meta.env.VITE_POSTHOG_PERSONAL_API_KEY;
-    const region = import.meta.env.VITE_POSTHOG_REGION;
+    // Vite exposes env variables with the configured prefixes.
+    // We'll check for both VITE_POSTHOG_ and the direct POSTHOG_ prefixes.
+    const projectId = import.meta.env.VITE_POSTHOG_PROJECT_ID || import.meta.env.POSTHOG_PROJECT_ID;
+    const apiKey = import.meta.env.VITE_POSTHOG_PERSONAL_API_KEY || import.meta.env.POSTHOG_PERSONAL_API_KEY;
+    const region = import.meta.env.VITE_POSTHOG_REGION || import.meta.env.POSTHOG_REGION;
 
     if (projectId && apiKey && region) {
         if (['US', 'EU'].includes(region.toUpperCase())) {
             return { projectId, apiKey, region: region.toUpperCase() };
         }
-        console.warn(`Invalid VITE_POSTHOG_REGION found: "${region}". It should be "US" or "EU".`);
+        console.warn(`Invalid POSTHOG_REGION found: "${region}". It should be "US" or "EU".`);
     }
     return null;
 };

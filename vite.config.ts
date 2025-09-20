@@ -8,6 +8,8 @@ export default defineConfig(() => ({
     host: "::",
     port: 8080,
   },
+  // Allow variables starting with POSTHOG_ to be exposed to the client
+  envPrefix: ["VITE_", "POSTHOG_"],
   plugins: [dyadComponentTagger(), react()],
   resolve: {
     alias: {
