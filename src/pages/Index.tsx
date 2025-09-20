@@ -5,7 +5,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -20,7 +22,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 interface ApiConfig {
     projectId: string;
     apiKey: string;
-    region: string;
+    region:string;
 }
 
 const REFRESH_INTERVALS = [
@@ -30,12 +32,17 @@ const REFRESH_INTERVALS = [
     { label: "5 minutes", value: 300000 },
 ];
 
+const POSTHOG_TABLES = [
+    { name: 'Persons', value: 'persons' },
+    { name: 'Events', value: 'events' },
+    { name: 'Sessions', value: 'sessions' },
+    { name: 'Groups', value: 'groups' },
+];
+
 const Index = () => {
     const [config, setConfig] = useLocalStorage<ApiConfig | null>('posthogConfig', null);
-    const [selectedQueryId, setSelectedQueryId] = useLocalStorage<string | null>('selectedQueryId', null);
+    const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
     const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
-    
-    const [selectedQuery, setSelectedQuery] = React.useState<SavedWarehouseQuery | null>(null);
 
     const handleSubmit = (values: ApiConfig) => {
         setConfig(values);
@@ -43,7 +50,7 @@ const Index = () => {
     
     const handleSignOut = () => {
         setConfig(null);
-        setSelectedQueryId(null);
+        setSelectedView(null);
     };
 
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery({
@@ -63,18 +70,22 @@ const Index = () => {
         }
     }, [isQueriesError, queriesError, handleSignOut]);
 
-    React.useEffect(() => {
-        if (savedQueries && selectedQueryId) {
-            const query = savedQueries.find(q => q.id === selectedQueryId) || null;
-            setSelectedQuery(query);
-        } else {
-            setSelectedQuery(null);
-        }
-    }, [savedQueries, selectedQueryId]);
+    const [viewType, viewValue] = selectedView ? selectedView.split('__') : [null, null];
 
-    const handleSelectQuery = (queryId: string) => {
-        setSelectedQueryId(queryId);
-    };
+    let queryToRun: string | null = null;
+    let title: string | null = null;
+
+    if (viewType === 'custom' && viewValue && savedQueries) {
+        const query = savedQueries.find(q => q.id === viewValue);
+        if (query) {
+            queryToRun = query.query.query;
+            title = query.name;
+        }
+    } else if (viewType === 'table' && viewValue) {
+        queryToRun = `SELECT * FROM ${viewValue} LIMIT 100`;
+        const tableDef = POSTHOG_TABLES.find(t => t.value === viewValue);
+        title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
+    }
 
     return (
         <div className="container mx-auto p-4 md:p-8">
@@ -91,17 +102,26 @@ const Index = () => {
                     
                     {isLoadingQueries && <p className="text-center text-muted-foreground">Loading your saved queries...</p>}
 
-                    {savedQueries && savedQueries.length > 0 && (
+                    {savedQueries && (
                         <section>
                             <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
                                 <div className="space-y-2">
-                                    <Label htmlFor="query-select">Custom View</Label>
-                                    <Select onValueChange={handleSelectQuery} value={selectedQueryId ?? ""}>
+                                    <Label htmlFor="query-select">View</Label>
+                                    <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
                                         <SelectTrigger id="query-select">
                                             <SelectValue placeholder="Select a view to display" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {savedQueries.map(q => <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>)}
+                                            {savedQueries.length > 0 && (
+                                                <SelectGroup>
+                                                    <SelectLabel>Custom Views</SelectLabel>
+                                                    {savedQueries.map(q => <SelectItem key={q.id} value={`custom__${q.id}`}>{q.name}</SelectItem>)}
+                                                </SelectGroup>
+                                            )}
+                                            <SelectGroup>
+                                                <SelectLabel>PostHog Tables</SelectLabel>
+                                                {POSTHOG_TABLES.map(t => <SelectItem key={t.value} value={`table__${t.value}`}>{t.name}</SelectItem>)}
+                                            </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -121,16 +141,16 @@ const Index = () => {
                     )}
 
                     {savedQueries && savedQueries.length === 0 && (
-                        <div className="text-center py-12">
+                         <div className="text-center py-12">
                             <p className="text-muted-foreground">No saved Data Warehouse queries found for this project.</p>
                         </div>
                     )}
 
                     <section className="mt-8">
-                        {selectedQuery && config && (
+                        {queryToRun && title && config && (
                             <QueryDisplay 
-                                title={selectedQuery.name}
-                                query={selectedQuery.query.query} 
+                                title={title}
+                                query={queryToRun} 
                                 {...config} 
                                 refetchInterval={refreshInterval} 
                             />
