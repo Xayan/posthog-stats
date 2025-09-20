@@ -89,6 +89,8 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
     return <p className="text-center text-muted-foreground">No fields selected. Use the 'Fields' dropdown to select columns to display.</p>;
   }
 
+  const rowCount = data.results.length;
+
   return (
     <div className="overflow-x-auto rounded-md border bg-card">
       <Table>
@@ -131,6 +133,11 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
           )}
         </TableBody>
       </Table>
+      {rowCount > 0 && (
+        <div className="p-2 text-sm text-muted-foreground text-right border-t">
+          Showing {rowCount} rows
+        </div>
+      )}
     </div>
   );
 };
