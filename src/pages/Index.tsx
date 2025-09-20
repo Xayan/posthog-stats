@@ -15,6 +15,7 @@ import { fetchSavedWarehouseQueries, SavedWarehouseQuery } from "@/services/post
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
 import { ConfigurationForm } from "@/components/ConfigurationForm";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 
 interface ApiConfig {
     projectId: string;
@@ -30,10 +31,11 @@ const REFRESH_INTERVALS = [
 ];
 
 const Index = () => {
-    const [config, setConfig] = React.useState<ApiConfig | null>(null);
-
+    const [config, setConfig] = useLocalStorage<ApiConfig | null>('posthogConfig', null);
+    const [selectedQueryId, setSelectedQueryId] = useLocalStorage<string | null>('selectedQueryId', null);
+    const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
+    
     const [selectedQuery, setSelectedQuery] = React.useState<SavedWarehouseQuery | null>(null);
-    const [refreshInterval, setRefreshInterval] = React.useState(REFRESH_INTERVALS[0].value);
 
     const handleSubmit = (values: ApiConfig) => {
         setConfig(values);
@@ -41,7 +43,7 @@ const Index = () => {
     
     const handleSignOut = () => {
         setConfig(null);
-        setSelectedQuery(null);
+        setSelectedQueryId(null);
     };
 
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery({
@@ -59,11 +61,19 @@ const Index = () => {
             showError(queriesError.message);
             handleSignOut();
         }
-    }, [isQueriesError, queriesError]);
+    }, [isQueriesError, queriesError, handleSignOut]);
+
+    React.useEffect(() => {
+        if (savedQueries && selectedQueryId) {
+            const query = savedQueries.find(q => q.id === selectedQueryId) || null;
+            setSelectedQuery(query);
+        } else {
+            setSelectedQuery(null);
+        }
+    }, [savedQueries, selectedQueryId]);
 
     const handleSelectQuery = (queryId: string) => {
-        const query = savedQueries?.find(q => q.id === queryId) || null;
-        setSelectedQuery(query);
+        setSelectedQueryId(queryId);
     };
 
     return (
@@ -86,7 +96,7 @@ const Index = () => {
                             <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
                                 <div className="space-y-2">
                                     <Label htmlFor="query-select">Custom View</Label>
-                                    <Select onValueChange={handleSelectQuery} value={selectedQuery?.id ?? ""}>
+                                    <Select onValueChange={handleSelectQuery} value={selectedQueryId ?? ""}>
                                         <SelectTrigger id="query-select">
                                             <SelectValue placeholder="Select a view to display" />
                                         </SelectTrigger>
