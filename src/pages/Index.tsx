@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { showError } from "@/utils/toast";
-import { fetchSavedWarehouseQueries, runHogQLQuery } from "@/services/posthog";
+import { fetchSavedWarehouseQueries, fetchInsights, runPostHogQuery, SavedWarehouseQuery, Insight } from "@/services/posthog";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
 import { ConfigurationForm } from "@/components/ConfigurationForm";
@@ -54,11 +54,21 @@ const Index = () => {
         setSelectedView(null);
     };
 
-    const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery({
+    const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
         queryKey: ['savedQueries', config],
         queryFn: () => {
             if (!config) throw new Error("Config not set");
             return fetchSavedWarehouseQueries(config);
+        },
+        enabled: !!config,
+        retry: false,
+    });
+
+    const { data: insights, isLoading: isLoadingInsights, isError: isInsightsError, error: insightsError } = useQuery<Insight[], Error>({
+        queryKey: ['insights', config],
+        queryFn: () => {
+            if (!config) throw new Error("Config not set");
+            return fetchInsights(config);
         },
         enabled: !!config,
         retry: false,
@@ -69,30 +79,40 @@ const Index = () => {
             showError(queriesError.message);
             handleSignOut();
         }
-    }, [isQueriesError, queriesError, handleSignOut]);
+        if (isInsightsError && insightsError) {
+            showError(insightsError.message);
+            handleSignOut();
+        }
+    }, [isQueriesError, queriesError, isInsightsError, insightsError, handleSignOut]);
 
     const [viewType, viewValue] = selectedView ? selectedView.split('__') : [null, null];
 
-    let queryToRun: string | null = null;
+    let queryToRun: { kind: string; query?: string; insight?: string } | null = null;
     let title: string | null = null;
 
     if (viewType === 'custom' && viewValue && savedQueries) {
         const query = savedQueries.find(q => q.id === viewValue);
         if (query) {
-            queryToRun = query.query.query;
+            queryToRun = { kind: "HogQLQuery", query: query.query.query };
             title = query.name;
         }
     } else if (viewType === 'table' && viewValue) {
-        queryToRun = `SELECT * FROM ${viewValue} LIMIT 100`;
+        queryToRun = { kind: "HogQLQuery", query: `SELECT * FROM ${viewValue} LIMIT 100` };
         const tableDef = POSTHOG_TABLES.find(t => t.value === viewValue);
         title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
+    } else if (viewType === 'insight' && viewValue && insights) {
+        const insight = insights.find(i => i.short_id === viewValue);
+        if (insight) {
+            queryToRun = { kind: "InsightQuery", insight: insight.short_id };
+            title = `Insight: ${insight.name}`;
+        }
     }
 
     const { data, isLoading, isError, error, isFetching } = useQuery({
-        queryKey: ['hogqlQuery', config, queryToRun],
+        queryKey: ['posthogQuery', config, queryToRun],
         queryFn: () => {
             if (!config || !queryToRun) throw new Error("Configuration or query is missing.");
-            return runHogQLQuery({ ...config, query: queryToRun });
+            return runPostHogQuery({ ...config, query: queryToRun });
         },
         enabled: !!config && !!queryToRun,
         retry: false,
@@ -109,22 +129,24 @@ const Index = () => {
         }
     }, [allFields, selectedFields, setSelectedFields]);
 
+    const overallLoading = isLoadingQueries || isLoadingInsights;
+
     return (
         <div className="container mx-auto p-4 md:p-8">
             <header className="text-center mb-8">
                 <h1 className="text-3xl font-bold tracking-tight">PostHog Custom Views</h1>
-                <p className="text-muted-foreground">Display data from your saved Data Warehouse queries.</p>
+                <p className="text-muted-foreground">Display data from your saved Data Warehouse queries, tables, and insights.</p>
             </header>
 
             {!config ? (
-                <ConfigurationForm onSubmit={handleSubmit} isLoading={isLoadingQueries} />
+                <ConfigurationForm onSubmit={handleSubmit} isLoading={overallLoading} />
             ) : (
                 <>
                     <ConnectionInfo projectId={config.projectId} onSignOut={handleSignOut} />
                     
-                    {isLoadingQueries && <p className="text-center text-muted-foreground">Loading your saved queries...</p>}
+                    {overallLoading && <p className="text-center text-muted-foreground">Loading PostHog data...</p>}
 
-                    {savedQueries && (
+                    {(savedQueries || insights) && (
                         <section>
                             <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                                 <div className="space-y-2">
@@ -134,10 +156,16 @@ const Index = () => {
                                             <SelectValue placeholder="Select a view to display" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {savedQueries.length > 0 && (
+                                            {savedQueries && savedQueries.length > 0 && (
                                                 <SelectGroup>
                                                     <SelectLabel>Custom Views</SelectLabel>
                                                     {savedQueries.map(q => <SelectItem key={q.id} value={`custom__${q.id}`}>{q.name}</SelectItem>)}
+                                                </SelectGroup>
+                                            )}
+                                            {insights && insights.length > 0 && (
+                                                <SelectGroup>
+                                                    <SelectLabel>Insights</SelectLabel>
+                                                    {insights.map(i => <SelectItem key={i.short_id} value={`insight__${i.short_id}`}>{i.name}</SelectItem>)}
                                                 </SelectGroup>
                                             )}
                                             <SelectGroup>
@@ -171,9 +199,9 @@ const Index = () => {
                         </section>
                     )}
 
-                    {savedQueries && savedQueries.length === 0 && (
+                    {(!savedQueries || savedQueries.length === 0) && (!insights || insights.length === 0) && !overallLoading && (
                          <div className="text-center py-12">
-                            <p className="text-muted-foreground">No saved Data Warehouse queries found for this project.</p>
+                            <p className="text-muted-foreground">No saved Data Warehouse queries or insights found for this project.</p>
                         </div>
                     )}
 
