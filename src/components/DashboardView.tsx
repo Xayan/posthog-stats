@@ -24,7 +24,6 @@ interface ApiConfig {
 interface DashboardViewProps {
     config: ApiConfig;
     onSignOut: () => void;
-    isEnvConfig: boolean;
 }
 
 const REFRESH_INTERVALS = [
@@ -41,7 +40,7 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
-export const DashboardView = ({ config, onSignOut, isEnvConfig }: DashboardViewProps) => {
+export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
     const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
 
@@ -78,7 +77,7 @@ export const DashboardView = ({ config, onSignOut, isEnvConfig }: DashboardViewP
 
     return (
         <>
-            <ConnectionInfo projectId={config.projectId} onSignOut={onSignOut} isEnvConfig={isEnvConfig} />
+            <ConnectionInfo projectId={config.projectId} onSignOut={onSignOut} />
             
             {isLoading && !data && <p className="text-center text-muted-foreground">Loading PostHog data...</p>}
 

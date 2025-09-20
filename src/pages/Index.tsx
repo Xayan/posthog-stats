@@ -71,7 +71,7 @@ const Index = () => {
             </header>
 
             {storedConfig ? (
-                <DashboardView config={storedConfig} onSignOut={handleSignOut} isEnvConfig={!!envConfig} />
+                <DashboardView config={storedConfig} onSignOut={handleSignOut} />
             ) : (
                 <ConfigurationForm onSubmit={handleSubmit} isLoading={false} initialValues={initialFormValues} />
             )}
