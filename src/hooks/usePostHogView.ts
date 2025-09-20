@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type PaginationState } from "@tanstack/react-table";
-import { fetchSavedWarehouseQueries, fetchInsights, runPostHogQuery, SavedWarehouseQuery, Insight } from "@/services/posthog";
+import { fetchSavedWarehouseQueries, fetchInsights, runPostHogQuery, SavedWarehouseQuery, Insight, HogQLQueryBody, InsightVizNodeBody, PostHogQueryBody } from "@/services/posthog";
 import { showError } from "@/utils/toast";
 
 interface ApiConfig {
@@ -56,7 +56,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         let baseQuery: string | null = null;
         let title: string | null = null;
         let isHogQL = false;
-        let insightQuery: object | null = null;
+        let insightQuery: InsightVizNodeBody | null = null;
 
         if (type === 'custom' && value && savedQueries) {
             const query = savedQueries.find(q => q.id === value);
@@ -84,15 +84,15 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         queryKey: ['posthogQueryCount', config, baseQuery],
         queryFn: async () => {
             if (!config || !baseQuery) return 0;
-            const countQuery = { kind: "HogQLQuery", query: `SELECT count() FROM (${baseQuery})` };
+            const countQuery: HogQLQueryBody = { kind: "HogQLQuery", query: `SELECT count() FROM (${baseQuery})` };
             const result = await runPostHogQuery({ ...config, query: countQuery });
             return result?.results?.[0]?.[0] ?? 0;
         },
         enabled: !!config && !!baseQuery && isHogQL,
-        refetchInterval,
+        refetchInterval: refreshInterval,
     });
 
-    const queryToRun = React.useMemo(() => {
+    const queryToRun = React.useMemo<PostHogQueryBody | null>(() => {
         if (isHogQL && baseQuery) {
             const offset = pagination.pageIndex * pagination.pageSize;
             return { kind: "HogQLQuery", query: `${baseQuery} LIMIT ${pagination.pageSize} OFFSET ${offset}` };
@@ -111,7 +111,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             return runPostHogQuery({ ...config, query: queryToRun });
         },
         enabled: !!config && !!queryToRun,
-        refetchInterval,
+        refetchInterval: refreshInterval,
     });
 
     const totalRowCount = isHogQL ? countData : data?.results?.length;

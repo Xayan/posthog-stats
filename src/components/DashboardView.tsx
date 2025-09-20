@@ -7,7 +7,7 @@ import {
   getFilteredRowModel,
   type ColumnDef,
   type SortingState,
-  type ColumnVisibilityState,
+  type VisibilityState,
   type RowSelectionState,
   type PaginationState,
 } from "@tanstack/react-table";
@@ -65,7 +65,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     // Table state
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const columnVisibilityKey = selectedView ? `columnVisibility_${selectedView}` : 'columnVisibility_default';
-    const [columnVisibility, setColumnVisibility] = useLocalStorage<ColumnVisibilityState>(columnVisibilityKey, {});
+    const [columnVisibility, setColumnVisibility] = useLocalStorage<VisibilityState>(columnVisibilityKey, {});
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
     const [pagination, setPagination] = useLocalStorage<PaginationState>('tablePagination', {
         pageIndex: 0,
@@ -186,7 +186,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                         <div className="space-y-2">
                             <Label htmlFor="query-select">View</Label>
-                            <Select onValuechange={setSelectedView} value={selectedView ?? ""}>
+                            <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
                                 <SelectTrigger id="query-select" className="hover:bg-accent hover:text-accent-foreground">
                                     <SelectValue placeholder="Select a view to display" />
                                 </SelectTrigger>

@@ -58,17 +58,17 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
     return data.results as Insight[];
 };
 
-type HogQLQueryBody = {
+export type HogQLQueryBody = {
     kind: "HogQLQuery";
     query: string;
 };
 
-type InsightVizNodeBody = {
+export type InsightVizNodeBody = {
     kind: "InsightVizNode";
     source: any; // The source is the actual insight query definition
 };
 
-type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;
+export type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;
 
 interface RunQueryConfig extends ApiConfig {
     query: PostHogQueryBody;
