@@ -16,7 +16,7 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
-export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, onAuthError: () => void) => {
+export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, limit: number, onAuthError: () => void) => {
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
         queryKey: ['savedQueries', config],
         queryFn: () => {
@@ -56,23 +56,26 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
     if (viewType === 'custom' && viewValue && savedQueries) {
         const query = savedQueries.find(q => q.id === viewValue);
         if (query) {
-            queryToRun = { kind: "HogQLQuery", query: query.query.query };
+            // Apply limit to custom HogQL queries
+            queryToRun = { kind: "HogQLQuery", query: `${query.query.query} LIMIT ${limit}` };
             title = query.name;
         }
     } else if (viewType === 'table' && viewValue) {
-        queryToRun = { kind: "HogQLQuery", query: `SELECT * FROM ${viewValue} LIMIT 100` };
+        // Apply limit to PostHog table queries
+        queryToRun = { kind: "HogQLQuery", query: `SELECT * FROM ${viewValue} LIMIT ${limit}` };
         const tableDef = POSTHOG_TABLES.find(t => t.value === viewValue);
         title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
     } else if (viewType === 'insight' && viewValue && insights) {
         const insight = insights.find(i => i.short_id === viewValue);
         if (insight && insight.query) {
+            // Insights typically have their own query structure and limits, so we pass the original query
             queryToRun = insight.query;
             title = `Insight: ${insight.name}`;
         }
     }
 
     const { data, isLoading, isError, error, isFetching } = useQuery({
-        queryKey: ['posthogQuery', config, queryToRun],
+        queryKey: ['posthogQuery', config, queryToRun, limit], // Add limit to queryKey to refetch when it changes
         queryFn: () => {
             if (!config || !queryToRun) throw new Error("Configuration or query is missing.");
             return runPostHogQuery({ ...config, query: queryToRun });

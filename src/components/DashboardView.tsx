@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input"; // Import Input for the limit field
 import { FieldSelector } from "@/components/FieldSelector";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
@@ -44,6 +45,10 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
     const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
 
+    // Dynamic storage key for limit based on selectedView
+    const limitStorageKey = selectedView ? `limit_${selectedView}` : 'limit_default';
+    const [limit, setLimit] = useLocalStorage<number>(limitStorageKey, 1000);
+
     const {
         savedQueries,
         insights,
@@ -54,7 +59,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, onSignOut);
+    } = usePostHogView(config, selectedView, limit, onSignOut); // Pass limit to the hook
 
     const allFields = React.useMemo(() => data?.columns || [], [data]);
     const storageKey = selectedView ? `selectedFields_${selectedView}` : 'selectedFields_null';
@@ -74,6 +79,15 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
             }
         }
     }, [allFields, selectedFields, setSelectedFields]);
+
+    const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseInt(e.target.value, 10);
+        if (!isNaN(value) && value >= 0) {
+            setLimit(value);
+        } else if (e.target.value === '') {
+            setLimit(0); // Allow clearing the input
+        }
+    };
 
     return (
         <>
@@ -121,6 +135,20 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="limit-input">Limit</Label>
+                            <Input
+                                id="limit-input"
+                                type="number"
+                                value={limit === 0 ? '' : limit} // Display empty string for 0 to allow clearing
+                                onChange={handleLimitChange}
+                                placeholder="e.g., 1000"
+                                min="0"
+                                disabled={!selectedView}
+                            />
+                        </div>
+                    </div>
+                    <div className="max-w-4xl mx-auto mb-8">
                         <div className="space-y-2">
                             <Label>Fields</Label>
                             <FieldSelector

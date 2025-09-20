@@ -1,1 +1,10 @@
-services: {}
+services:
+  bolt-diy:
+    image: mahakoala777/bolt-diy:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - bolt-diy-data:/app/data
+
+volumes:
+  bolt-diy-data:
