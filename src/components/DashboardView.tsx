@@ -57,6 +57,7 @@ const POSTHOG_TABLES = [
 ];
 
 const PAGE_SIZES = [100, 250, 500, 1000];
+const MAX_FETCH_LIMIT = 1000;
 
 export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
@@ -64,7 +65,8 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     
     // Table state
     const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
+    const columnVisibilityKey = selectedView ? `columnVisibility_${selectedView}` : 'columnVisibility_default';
+    const [columnVisibility, setColumnVisibility] = useLocalStorage<ColumnVisibilityState>(columnVisibilityKey, {});
     const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
     const [pagination, setPagination] = useLocalStorage<PaginationState>('tablePagination', {
         pageIndex: 0,
@@ -81,13 +83,12 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, pagination.pageSize, onSignOut);
+    } = usePostHogView(config, selectedView, MAX_FETCH_LIMIT, refreshInterval, onSignOut);
 
-    // Reset pagination when view changes
+    // Reset state when view changes, but preserve column visibility from local storage
     React.useEffect(() => {
         setPagination(p => ({ ...p, pageIndex: 0 }));
         setSorting([]);
-        setColumnVisibility({});
         setRowSelection({});
     }, [selectedView, setPagination]);
 
@@ -217,7 +218,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                             <Label htmlFor="rows-per-page">Rows per page</Label>
                             <Select
                                 value={String(pagination.pageSize)}
-                                onValueChange={(value) => {
+                                onValuechange={(value) => {
                                     table.setPageSize(Number(value));
                                 }}
                             >
