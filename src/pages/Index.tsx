@@ -47,8 +47,13 @@ const Index = () => {
     const envConfig = React.useMemo(() => getEnvConfig(), []);
     const [storedConfig, setStoredConfig] = useLocalStorage<ApiConfig | null>('posthogConfig', null);
 
-    const config = envConfig || storedConfig;
-    const isEnvConfig = !!envConfig;
+    // Determine initial form values: envConfig if present, otherwise default empty values
+    const initialFormValues = React.useMemo(() => {
+        if (envConfig) {
+            return envConfig;
+        }
+        return { projectId: '', apiKey: '', baseUrl: 'https://app.posthog.com' };
+    }, [envConfig]);
 
     const handleSubmit = (values: ApiConfig) => {
         setStoredConfig(values);
@@ -65,10 +70,10 @@ const Index = () => {
                 <p className="text-muted-foreground">Display data from your saved Data Warehouse queries, tables, and insights.</p>
             </header>
 
-            {!config ? (
-                <ConfigurationForm onSubmit={handleSubmit} isLoading={false} />
+            {storedConfig ? (
+                <DashboardView config={storedConfig} onSignOut={handleSignOut} isEnvConfig={!!envConfig} />
             ) : (
-                <DashboardView config={config} onSignOut={handleSignOut} isEnvConfig={isEnvConfig} />
+                <ConfigurationForm onSubmit={handleSubmit} isLoading={false} initialValues={initialFormValues} />
             )}
 
             <MadeWithDyad />

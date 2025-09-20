@@ -22,15 +22,12 @@ interface ApiConfig {
 interface ConfigurationFormProps {
   onSubmit: (values: ApiConfig) => void;
   isLoading: boolean;
+  initialValues: ApiConfig; // New prop to pre-fill the form
 }
 
-export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProps) => {
+export const ConfigurationForm = ({ onSubmit, isLoading, initialValues }: ConfigurationFormProps) => {
   const form = useForm({
-    defaultValues: {
-      projectId: '',
-      apiKey: '',
-      baseUrl: 'https://app.posthog.com',
-    },
+    defaultValues: initialValues, // Use initialValues to set the form's default state
     onSubmit: async ({ value }) => {
       onSubmit(value);
     },
