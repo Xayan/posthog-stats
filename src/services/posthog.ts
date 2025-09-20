@@ -67,7 +67,7 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
 // Function to fetch tables from the PostHog data warehouse connections
 const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
     const apiRoot = getApiRoot(baseUrl);
-    
+
     const response = await fetch(`${apiRoot}projects/${projectId}/warehouse_tables/`, {
         headers: {
             'Authorization': `Bearer ${apiKey}`
@@ -100,10 +100,10 @@ export const fetchAvailableTables = async (config: ApiConfig): Promise<TableInfo
     const systemTables = getCoreSystemTables();
 
     const allTablesMap = new Map<string, TableInfo>();
-    
+
     // Add system tables first
     systemTables.forEach(table => allTablesMap.set(table.id, table));
-    
+
     // Add warehouse tables, overwriting if there's a name collision (warehouse takes precedence)
     warehouseTables.forEach(table => allTablesMap.set(table.id, table));
 
