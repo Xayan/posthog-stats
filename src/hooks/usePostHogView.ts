@@ -96,9 +96,11 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                 `SELECT '${`custom__${q.id}`}' as view_id, count() as total FROM (${q.query.query})`
             );
 
-            const tableQueries = availableTables.map(t => 
-                `SELECT '${`table__${t.id}`}' as view_id, count() as total FROM ${t.id}`
-            );
+            const tableQueries = availableTables
+                .filter(t => t.id !== 'cohort_people') // Exclude cohort_people from count
+                .map(t => 
+                    `SELECT '${`table__${t.id}`}' as view_id, count() as total FROM ${t.id}`
+                );
 
             const allCountQueries = [...customQueries, ...tableQueries];
             if (allCountQueries.length === 0) return new Map();
