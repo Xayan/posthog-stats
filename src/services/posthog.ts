@@ -66,42 +66,22 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
 export const fetchAvailableTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
     const apiRoot = getApiRoot(baseUrl);
     
-    // First, try to get tables from the schema endpoint
-    try {
-        const response = await fetch(`${apiRoot}projects/${projectId}/query`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                query: {
-                    kind: "HogQLQuery",
-                    query: "SELECT database, name FROM system.tables WHERE database NOT IN ('system') ORDER BY name"
-                }
-            })
-        });
-
-        if (response.ok) {
-            const data = await response.json();
-            if (data.results && Array.isArray(data.results)) {
-                return data.results.map((row: [string, string]) => ({
-                    name: row[1],
-                    id: row[1]
-                }));
-            }
+    const response = await fetch(`${apiRoot}projects/${projectId}/warehouse_tables/`, {
+        headers: {
+            'Authorization': `Bearer ${apiKey}`
         }
-    } catch (error) {
-        console.warn('Failed to fetch tables from system.tables, falling back to default tables', error);
-    }
+    });
 
-    // Fallback to default PostHog tables if system.tables query fails
-    return [
-        { name: 'Persons', id: 'persons' },
-        { name: 'Events', id: 'events' },
-        { name: 'Sessions', id: 'sessions' },
-        { name: 'Groups', id: 'groups' },
-    ];
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch available tables. Check your credentials and permissions.');
+    }
+    const data = await response.json();
+    // Assuming the API returns an array of objects, each with 'name' and 'id'
+    return data.results.map((table: { name: string; id: string }) => ({
+        name: table.name,
+        id: table.id
+    }));
 };
 
 export type HogQLQueryBody = {

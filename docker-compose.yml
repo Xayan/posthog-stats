@@ -5,6 +5,11 @@ services:
       - "3000:3000"
     volumes:
       - bolt-diy-data:/app/data
-
+  bolt:
+    image: beberhardt/bolt.diy.prebuilddocker
+    ports:
+      - "5173:5173"
+    environment:
+      - OPEN_ROUTER_API_KEY=ABC
 volumes:
   bolt-diy-data:
