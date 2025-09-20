@@ -6,7 +6,7 @@ import { showError } from "@/utils/toast";
 interface ApiConfig {
     projectId: string;
     apiKey: string;
-    region: string;
+    baseUrl: string;
 }
 
 const POSTHOG_TABLES = [

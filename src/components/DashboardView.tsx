@@ -18,7 +18,7 @@ import { ConnectionInfo } from "@/components/ConnectionInfo";
 interface ApiConfig {
     projectId: string;
     apiKey: string;
-    region: string;
+    baseUrl: string;
 }
 
 interface DashboardViewProps {

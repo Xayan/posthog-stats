@@ -18,12 +18,19 @@ export interface Insight {
 interface ApiConfig {
     projectId: string;
     apiKey: string;
-    region: string;
+    baseUrl: string;
 }
 
-export const fetchSavedWarehouseQueries = async ({ projectId, apiKey, region }: ApiConfig) => {
-    const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
-    const response = await fetch(`${baseUrl}projects/${projectId}/warehouse_saved_queries/`, {
+const getApiRoot = (baseUrl: string): string => {
+    if (!baseUrl) return '';
+    // Remove trailing slash if it exists, then add /api/
+    const sanitizedUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${sanitizedUrl}/api/`;
+};
+
+export const fetchSavedWarehouseQueries = async ({ projectId, apiKey, baseUrl }: ApiConfig) => {
+    const apiRoot = getApiRoot(baseUrl);
+    const response = await fetch(`${apiRoot}projects/${projectId}/warehouse_saved_queries/`, {
         headers: {
             'Authorization': `Bearer ${apiKey}`
         }
@@ -36,9 +43,9 @@ export const fetchSavedWarehouseQueries = async ({ projectId, apiKey, region }: 
     return data.results as SavedWarehouseQuery[];
 };
 
-export const fetchInsights = async ({ projectId, apiKey, region }: ApiConfig) => {
-    const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
-    const response = await fetch(`${baseUrl}projects/${projectId}/insights/?limit=100`, {
+export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) => {
+    const apiRoot = getApiRoot(baseUrl);
+    const response = await fetch(`${apiRoot}projects/${projectId}/insights/?limit=100`, {
         headers: {
             'Authorization': `Bearer ${apiKey}`
         }
@@ -67,9 +74,9 @@ interface RunQueryConfig extends ApiConfig {
     query: PostHogQueryBody;
 }
 
-export const runPostHogQuery = async ({ projectId, apiKey, region, query }: RunQueryConfig) => {
-    const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
-    const response = await fetch(`${baseUrl}projects/${projectId}/query`, {
+export const runPostHogQuery = async ({ projectId, apiKey, baseUrl, query }: RunQueryConfig) => {
+    const apiRoot = getApiRoot(baseUrl);
+    const response = await fetch(`${apiRoot}projects/${projectId}/query`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${apiKey}`,

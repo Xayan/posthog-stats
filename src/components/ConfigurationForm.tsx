@@ -12,16 +12,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+interface ApiConfig {
+  projectId: string;
+  apiKey: string;
+  baseUrl: string;
+}
 
 interface ConfigurationFormProps {
-  onSubmit: (values: { projectId: string; apiKey:string; region: string }) => void;
+  onSubmit: (values: ApiConfig) => void;
   isLoading: boolean;
 }
 
@@ -30,7 +29,7 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
     defaultValues: {
       projectId: '',
       apiKey: '',
-      region: 'US',
+      baseUrl: 'https://app.posthog.com',
     },
     onSubmit: async ({ value }) => {
       onSubmit(value);
@@ -48,7 +47,7 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
       >
         <CardHeader>
           <CardTitle>Configuration</CardTitle>
-          <CardDescription>Provide your PostHog Project ID and Personal API Key.</CardDescription>
+          <CardDescription>Provide your PostHog Project ID, Personal API Key, and instance URL.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <form.Field
@@ -109,22 +108,30 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
             )}
           />
           <form.Field
-            name="region"
+            name="baseUrl"
+            validators={{
+              onChange: ({ value }) => {
+                const schema = z.string().url('Please enter a valid URL.');
+                const result = schema.safeParse(value);
+                if (!result.success) {
+                  return result.error.issues[0].message;
+                }
+              },
+            }}
             children={(field) => (
               <div className="space-y-2">
-                <Label htmlFor={field.name}>Region</Label>
-                <Select
+                <Label htmlFor={field.name}>PostHog URL</Label>
+                <Input
+                  id={field.name}
+                  name={field.name}
                   value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger id={field.name}>
-                    <SelectValue placeholder="Select region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="US">US</SelectItem>
-                    <SelectItem value="EU">EU</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="e.g., https://app.posthog.com"
+                />
+                {field.state.meta.errors?.[0] ? (
+                  <em className="text-destructive text-sm">{String(field.state.meta.errors[0])}</em>
+                ) : null}
               </div>
             )}
           />
