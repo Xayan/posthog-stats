@@ -2,20 +2,19 @@ import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
-import { QueryResultTable } from "./QueryResultTable";
 
 interface QueryDisplayProps {
   title: string;
-  data: any;
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
   isFetching: boolean;
   refetchInterval: number;
-  selectedFields: string[] | null;
+  hasData: boolean;
+  children: React.ReactNode;
 }
 
-export const QueryDisplay = ({ title, data, isLoading, isError, error, isFetching, refetchInterval, selectedFields }: QueryDisplayProps) => {
+export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, refetchInterval, hasData, children }: QueryDisplayProps) => {
   const [timerVisual, setTimerVisual] = React.useState("[   ]");
 
   React.useEffect(() => {
@@ -67,8 +66,8 @@ export const QueryDisplay = ({ title, data, isLoading, isError, error, isFetchin
       );
     }
   
-    if (data) {
-      return <QueryResultTable data={data} selectedFields={selectedFields} />;
+    if (hasData) {
+      return children;
     }
   
     return null;

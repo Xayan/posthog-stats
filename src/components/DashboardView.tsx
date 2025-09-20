@@ -1,4 +1,15 @@
 import * as React from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  type ColumnDef,
+  type SortingState,
+  type ColumnVisibilityState,
+  type RowSelectionState,
+} from "@tanstack/react-table";
+import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { usePostHogView } from "@/hooks/usePostHogView";
 import { Label } from "@/components/ui/label";
@@ -11,10 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input"; // Import Input for the limit field
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FieldSelector } from "@/components/FieldSelector";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
+import { DataTable } from "@/components/DataTable";
 
 interface ApiConfig {
     projectId: string;
@@ -44,8 +58,6 @@ const POSTHOG_TABLES = [
 export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
     const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
-
-    // Dynamic storage key for limit based on selectedView
     const limitStorageKey = selectedView ? `limit_${selectedView}` : 'limit_default';
     const [limit, setLimit] = useLocalStorage<number>(limitStorageKey, 1000);
 
@@ -59,33 +71,101 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, limit, onSignOut); // Pass limit to the hook
+    } = usePostHogView(config, selectedView, limit, onSignOut);
 
-    const allFields = React.useMemo(() => data?.columns || [], [data]);
-    const storageKey = selectedView ? `selectedFields_${selectedView}` : 'selectedFields_null';
-    const [selectedFields, setSelectedFields] = useLocalStorage<string[] | null>(storageKey, null);
+    // Table state
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+    const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
 
+    // Reset table state when view changes
     React.useEffect(() => {
-        if (allFields.length > 0) {
-            if (selectedFields === null) {
-                setSelectedFields(allFields);
-            } else {
-                const validSelectedFields = selectedFields.filter(field => allFields.includes(field));
-                if (validSelectedFields.length === 0) {
-                    setSelectedFields(allFields);
-                } else if (validSelectedFields.length !== selectedFields.length) {
-                    setSelectedFields(validSelectedFields);
-                }
-            }
-        }
-    }, [allFields, selectedFields, setSelectedFields]);
+        setSorting([]);
+        setColumnVisibility({});
+        setRowSelection({});
+    }, [selectedView]);
+
+    const transformedData = React.useMemo(() => {
+        if (!data?.results || !data?.columns) return [];
+        return data.results.map(row => {
+            const rowObject: Record<string, any> = {};
+            data.columns.forEach((col, index) => {
+                rowObject[col] = row[index];
+            });
+            return rowObject;
+        });
+    }, [data?.columns, data?.results]);
+
+    const columns = React.useMemo<ColumnDef<Record<string, any>>[]>(() => {
+        if (!data?.columns) return [];
+
+        const selectionColumn: ColumnDef<Record<string, any>> = {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={table.getIsAllPageRowsSelected()}
+                    onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+                    aria-label="Select all"
+                    className="translate-y-[2px]"
+                />
+            ),
+            cell: ({ row }) => (
+                <Checkbox
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
+                    className="translate-y-[2px]"
+                />
+            ),
+            enableSorting: false,
+            enableHiding: false,
+        };
+
+        const dataColumns = data.columns.map(columnName => ({
+            accessorKey: columnName,
+            header: ({ column }) => (
+                <Button
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    className="h-auto px-2 py-1 -ml-2 text-xs"
+                >
+                    {columnName}
+                    {column.getIsSorted() === 'asc' && <ArrowUp className="ml-1 h-3 w-3" />}
+                    {column.getIsSorted() === 'desc' && <ArrowDown className="ml-1 h-3 w-3" />}
+                    {column.getIsSorted() === false && <ChevronsUpDown className="ml-1 h-3 w-3 opacity-50" />}
+                </Button>
+            ),
+            cell: ({ row }) => {
+                const value = row.getValue(columnName);
+                return value === null ? <em className="text-muted-foreground">null</em> : String(value);
+            },
+        }));
+
+        return [selectionColumn, ...dataColumns];
+    }, [data?.columns]);
+
+    const table = useReactTable({
+        data: transformedData,
+        columns,
+        state: {
+            sorting,
+            columnVisibility,
+            rowSelection,
+        },
+        onSortingChange: setSorting,
+        onColumnVisibilityChange: setColumnVisibility,
+        onRowSelectionChange: setRowSelection,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+    });
 
     const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10);
         if (!isNaN(value) && value >= 0) {
             setLimit(value);
         } else if (e.target.value === '') {
-            setLimit(0); // Allow clearing the input
+            setLimit(0);
         }
     };
 
@@ -93,8 +173,6 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         <>
             <ConnectionInfo projectId={config.projectId} onSignOut={onSignOut} />
             
-            {isLoading && !data && <p className="text-center text-muted-foreground">Loading PostHog data...</p>}
-
             {(savedQueries || insights) && (
                 <section>
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
@@ -140,7 +218,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                             <Input
                                 id="limit-input"
                                 type="number"
-                                value={limit === 0 ? '' : limit} // Display empty string for 0 to allow clearing
+                                value={limit === 0 ? '' : limit}
                                 onChange={handleLimitChange}
                                 placeholder="e.g., 1000"
                                 min="0"
@@ -152,10 +230,8 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                         <div className="space-y-2">
                             <Label>Fields</Label>
                             <FieldSelector
-                                allFields={allFields}
-                                selectedFields={selectedFields || []}
-                                onSelectionChange={setSelectedFields}
-                                disabled={!selectedView || allFields.length === 0}
+                                table={table}
+                                disabled={!selectedView || !data?.columns || data.columns.length === 0}
                             />
                         </div>
                     </div>
@@ -172,14 +248,15 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                 {queryToRun && title && config && (
                     <QueryDisplay 
                         title={title}
-                        data={data}
                         isLoading={isLoading && !data}
                         isError={isError}
                         error={error as Error | null}
                         isFetching={isFetching}
                         refetchInterval={refreshInterval}
-                        selectedFields={selectedFields}
-                    />
+                        hasData={!!data}
+                    >
+                        <DataTable table={table} />
+                    </QueryDisplay>
                 )}
             </section>
         </>
