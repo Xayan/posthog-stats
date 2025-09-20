@@ -103,7 +103,7 @@ const Index = () => {
     } else if (viewType === 'insight' && viewValue && insights) {
         const insight = insights.find(i => i.short_id === viewValue);
         if (insight && insight.query) {
-            queryToRun = { kind: "InsightVizNode", source: insight.query };
+            queryToRun = insight.query;
             title = `Insight: ${insight.name}`;
         }
     }
