@@ -25,9 +25,15 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
+interface AdditionalTable {
+  name: string;
+  id: string;
+}
+
 interface ViewSelectorProps {
   savedQueries: SavedWarehouseQuery[] | undefined;
   insights: Insight[] | undefined;
+  additionalTables?: AdditionalTable[] | undefined;
   viewCounts: Map<string, number> | undefined;
   selectedView: string | null;
   onSelectView: (value: string | null) => void;
@@ -36,6 +42,7 @@ interface ViewSelectorProps {
 export const ViewSelector = ({
   savedQueries,
   insights,
+  additionalTables,
   viewCounts,
   selectedView,
   onSelectView,
@@ -53,6 +60,16 @@ export const ViewSelector = ({
         };
     });
 
+    const additional = additionalTables ? additionalTables.map(t => {
+        const count = viewCounts?.get(`table__${t.id}`);
+        const label = count !== undefined ? `${t.name} (${count.toLocaleString()})` : t.name;
+        return {
+            value: `table__${t.id}`,
+            label: label,
+            group: "Additional Tables",
+        };
+    }) : [];
+
     const custom = savedQueries ? savedQueries.map(q => {
         const count = viewCounts?.get(`custom__${q.id}`);
         const label = count !== undefined ? `${q.name} (${count.toLocaleString()})` : q.name;
@@ -69,12 +86,12 @@ export const ViewSelector = ({
         group: "Insights",
     })) : [];
 
-    return { tables, custom, insightViews };
-  }, [savedQueries, insights, viewCounts]);
+    return { tables, additional, custom, insightViews };
+  }, [savedQueries, insights, additionalTables, viewCounts]);
 
   const currentViewLabel = React.useMemo(() => {
     if (!selectedView) return "Select a view to display...";
-    const all = [...allViews.tables, ...allViews.custom, ...allViews.insightViews];
+    const all = [...allViews.tables, ...allViews.additional, ...allViews.custom, ...allViews.insightViews];
     return all.find(v => v.value === selectedView)?.label ?? "Select a view to display...";
   }, [selectedView, allViews]);
 
@@ -118,6 +135,25 @@ export const ViewSelector = ({
                 </CommandItem>
               ))}
             </CommandGroup>
+            {allViews.additional.length > 0 && (
+                <CommandGroup heading="Additional Tables">
+                {allViews.additional.map((view) => (
+                    <CommandItem
+                    key={view.value}
+                    value={view.label}
+                    onSelect={() => handleSelect(view.value)}
+                    >
+                    <Check
+                        className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedView === view.value ? "opacity-100" : "opacity-0"
+                        )}
+                    />
+                    {view.label}
+                    </CommandItem>
+                ))}
+                </CommandGroup>
+            )}
             {allViews.custom.length > 0 && (
                 <CommandGroup heading="Custom Views">
                 {allViews.custom.map((view) => (
