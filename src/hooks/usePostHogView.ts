@@ -97,7 +97,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             );
 
             const tableQueries = availableTables
-                .filter(t => t.id !== 'cohort_people') // Exclude cohort_people from count
+                .filter(t => !['cohort_people', 'groups'].includes(t.id)) // Exclude cohort_people and groups from count
                 .map(t => 
                     `SELECT '${`table__${t.id}`}' as view_id, count() as total FROM ${t.id}`
                 );
