@@ -12,6 +12,7 @@ export interface Insight {
     id: number;
     name: string;
     short_id: string;
+    query: any; // Assume the insight object contains its full query definition
 }
 
 interface ApiConfig {
@@ -55,14 +56,9 @@ type HogQLQueryBody = {
     query: string;
 };
 
-type SavedInsightNodeBody = {
-    kind: "SavedInsightNode";
-    shortId: string;
-};
-
 type InsightVizNodeBody = {
     kind: "InsightVizNode";
-    source: SavedInsightNodeBody;
+    source: any; // The source is the actual insight query definition
 };
 
 type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;

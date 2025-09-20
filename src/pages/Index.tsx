@@ -102,8 +102,8 @@ const Index = () => {
         title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
     } else if (viewType === 'insight' && viewValue && insights) {
         const insight = insights.find(i => i.short_id === viewValue);
-        if (insight) {
-            queryToRun = { kind: "InsightVizNode", source: { kind: "SavedInsightNode", shortId: insight.short_id } };
+        if (insight && insight.query) {
+            queryToRun = { kind: "InsightVizNode", source: insight.query };
             title = `Insight: ${insight.name}`;
         }
     }
