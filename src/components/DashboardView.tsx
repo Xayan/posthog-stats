@@ -218,7 +218,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                             <Label htmlFor="rows-per-page">Rows per page</Label>
                             <Select
                                 value={String(pagination.pageSize)}
-                                onValuechange={(value) => {
+                                onValueChange={(value) => {
                                     table.setPageSize(Number(value));
                                 }}
                             >
