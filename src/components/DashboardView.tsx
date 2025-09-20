@@ -18,9 +18,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -30,6 +28,7 @@ import { FieldSelector } from "@/components/FieldSelector";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
 import { DataTable } from "@/components/DataTable";
+import { ViewSelector } from "./ViewSelector";
 
 interface ApiConfig {
     projectId: string;
@@ -47,13 +46,6 @@ const REFRESH_INTERVALS = [
     { label: "30 seconds", value: 30000 },
     { label: "1 minute", value: 60000 },
     { label: "5 minutes", value: 300000 },
-];
-
-const POSTHOG_TABLES = [
-    { name: 'Persons', value: 'persons' },
-    { name: 'Events', value: 'events' },
-    { name: 'Sessions', value: 'sessions' },
-    { name: 'Groups', value: 'groups' },
 ];
 
 const PAGE_SIZES = [100, 250, 500, 1000];
@@ -187,37 +179,13 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                         <div className="space-y-2">
                             <Label htmlFor="query-select">View</Label>
-                            <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
-                                <SelectTrigger id="query-select" className="hover:bg-accent hover:text-accent-foreground">
-                                    <SelectValue placeholder="Select a view to display" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {savedQueries && savedQueries.length > 0 && (
-                                        <SelectGroup>
-                                            <SelectLabel>Custom Views</SelectLabel>
-                                            {savedQueries.map(q => {
-                                                const count = viewCounts?.get(`custom__${q.id}`);
-                                                const label = count !== undefined ? `${q.name} (${count.toLocaleString()})` : q.name;
-                                                return <SelectItem key={q.id} value={`custom__${q.id}`}>{label}</SelectItem>
-                                            })}
-                                        </SelectGroup>
-                                    )}
-                                    {insights && insights.length > 0 && (
-                                        <SelectGroup>
-                                            <SelectLabel>Insights</SelectLabel>
-                                            {insights.map(i => <SelectItem key={i.short_id} value={`insight__${i.short_id}`}>{i.name}</SelectItem>)}
-                                        </SelectGroup>
-                                    )}
-                                    <SelectGroup>
-                                        <SelectLabel>PostHog Tables</SelectLabel>
-                                        {POSTHOG_TABLES.map(t => {
-                                            const count = viewCounts?.get(`table__${t.value}`);
-                                            const label = count !== undefined ? `${t.name} (${count.toLocaleString()})` : t.name;
-                                            return <SelectItem key={t.value} value={`table__${t.value}`}>{label}</SelectItem>
-                                        })}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
+                            <ViewSelector
+                                savedQueries={savedQueries}
+                                insights={insights}
+                                viewCounts={viewCounts}
+                                selectedView={selectedView}
+                                onSelectView={setSelectedView}
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="refresh-interval">Auto-Refresh</Label>
