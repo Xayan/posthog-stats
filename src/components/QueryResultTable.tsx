@@ -57,7 +57,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
               className="px-2 py-1 -ml-2"
             >
               {columnName}
-              {column.getIsSorted() === 'asc' && <ArrowUp className="ml-2 h-4 w-4" />}
+              {column.getIsorted() === 'asc' && <ArrowUp className="ml-2 h-4 w-4" />}
               {column.getIsSorted() === 'desc' && <ArrowDown className="ml-2 h-4 w-4" />}
               {column.getIsSorted() === false && <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
             </Button>
@@ -129,7 +129,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
               </TableCell>
             </TableRow>
           )}
-        </Body>
+        </TableBody>
       </Table>
     </div>
   );
