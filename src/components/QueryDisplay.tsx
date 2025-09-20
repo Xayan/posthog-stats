@@ -15,35 +15,37 @@ interface QueryDisplayProps {
 }
 
 export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, refetchInterval, hasData, children }: QueryDisplayProps) => {
-  const [timerVisual, setTimerVisual] = React.useState("[   ]");
+  const [timerVisual, setTimerVisual] = React.useState("");
 
   React.useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined;
+
     if (isFetching) {
-      setTimerVisual("[...]");
-      return;
-    }
-
-    if (refetchInterval === 0) {
+      let state = 0;
+      const busyStates = ["[.. ]", "[ ..]"];
+      setTimerVisual(busyStates[0]);
+      intervalId = setInterval(() => {
+        state = (state + 1) % busyStates.length;
+        setTimerVisual(busyStates[state]);
+      }, 500);
+    } else if (refetchInterval > 0) {
+      let timerStep = 0;
+      const timerStates = ["[   ]", "[.  ]", "[.. ]", "[ ..]", "[  .]"];
+      setTimerVisual(timerStates[0]);
+      intervalId = setInterval(() => {
+        timerStep = (timerStep + 1) % timerStates.length;
+        setTimerVisual(timerStates[timerStep]);
+      }, 1000);
+    } else {
       setTimerVisual("");
-      return;
     }
 
-    let timerStep = 0;
-    const timerStates = [
-      "[.  ]",
-      "[.. ]",
-      "[ ..]",
-      "[  .]",
-      "[   ]",
-    ];
-
-    const intervalId = setInterval(() => {
-      setTimerVisual(timerStates[timerStep]);
-      timerStep = (timerStep + 1) % timerStates.length;
-    }, 2000);
-
-    return () => clearInterval(intervalId);
-  }, [refetchInterval, isFetching]);
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isFetching, refetchInterval]);
 
   const renderContent = () => {
     if (isLoading) {

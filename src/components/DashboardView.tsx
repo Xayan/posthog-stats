@@ -132,7 +132,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
             header: ({ column }) => (
                 <Button
                     variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                    onClick={() => column.toggleSorting()}
                     className="h-auto px-2 py-1 -ml-2 text-xs"
                 >
                     {columnName}
@@ -179,7 +179,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                         <div className="space-y-2">
                             <Label htmlFor="query-select">View</Label>
                             <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
-                                <SelectTrigger id="query-select">
+                                <SelectTrigger id="query-select" className="hover:bg-accent hover:text-accent-foreground">
                                     <SelectValue placeholder="Select a view to display" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -205,7 +205,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                         <div className="space-y-2">
                             <Label htmlFor="refresh-interval">Auto-Refresh</Label>
                             <Select value={String(refreshInterval)} onValueChange={(val) => setRefreshInterval(Number(val))}>
-                                <SelectTrigger id="refresh-interval">
+                                <SelectTrigger id="refresh-interval" className="hover:bg-accent hover:text-accent-foreground">
                                     <SelectValue placeholder="Set refresh interval" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -221,7 +221,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                                     table.setPageSize(Number(value));
                                 }}
                             >
-                                <SelectTrigger id="rows-per-page">
+                                <SelectTrigger id="rows-per-page" className="hover:bg-accent hover:text-accent-foreground">
                                     <SelectValue placeholder={pagination.pageSize} />
                                 </SelectTrigger>
                                 <SelectContent>
