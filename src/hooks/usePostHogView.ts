@@ -78,16 +78,39 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         return { viewType: type, viewValue: value, baseQuery, title, isHogQL, insightQuery };
     }, [selectedView, savedQueries, insights]);
 
-    const { data: countData } = useQuery({
-        queryKey: ['posthogQueryCount', config, baseQuery],
+    const { data: viewCounts } = useQuery<Map<string, number>, Error>({
+        queryKey: ['batchCounts', config, savedQueries],
         queryFn: async () => {
-            if (!config || !baseQuery) return 0;
-            const countQuery: HogQLQueryBody = { kind: "HogQLQuery", query: `SELECT count() FROM (${baseQuery})` };
-            const result = await runPostHogQuery({ ...config, query: countQuery });
-            return result?.results?.[0]?.[0] ?? 0;
+            if (!config || !savedQueries) return new Map();
+
+            const customQueries = savedQueries.map(q => 
+                `SELECT '${`custom__${q.id}`}' as view_id, count() as total FROM (${q.query.query})`
+            );
+
+            const tableQueries = POSTHOG_TABLES.map(t => 
+                `SELECT '${`table__${t.value}`}' as view_id, count() as total FROM ${t.value}`
+            );
+
+            const allCountQueries = [...customQueries, ...tableQueries];
+            if (allCountQueries.length === 0) return new Map();
+
+            const batchQuery: HogQLQueryBody = {
+                kind: "HogQLQuery",
+                query: allCountQueries.join(' UNION ALL ')
+            };
+
+            const result = await runPostHogQuery({ ...config, query: batchQuery });
+            
+            const countsMap = new Map<string, number>();
+            if (result?.results) {
+                result.results.forEach((row: [string, number]) => {
+                    countsMap.set(row[0], row[1]);
+                });
+            }
+            return countsMap;
         },
-        enabled: !!config && !!baseQuery && isHogQL,
-        refetchInterval: refreshInterval,
+        enabled: !!config && !!savedQueries,
+        refetchInterval: refreshInterval > 0 ? refreshInterval : false,
     });
 
     const queryToRun = React.useMemo<PostHogQueryBody | null>(() => {
@@ -96,7 +119,6 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             return { kind: "HogQLQuery", query: `${baseQuery} LIMIT ${pagination.pageSize} OFFSET ${offset}` };
         }
         if (insightQuery) {
-            // Do not modify the insight query; send it as-is.
             return insightQuery;
         }
         return null;
@@ -109,14 +131,19 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             return runPostHogQuery({ ...config, query: queryToRun });
         },
         enabled: !!config && !!queryToRun,
-        refetchInterval: refreshInterval,
+        refetchInterval: refreshInterval > 0 ? refreshInterval : false,
     });
 
-    const totalRowCount = isHogQL ? countData : data?.results?.length;
+    const totalRowCount = React.useMemo(() => {
+        if (!selectedView) return 0;
+        if (isHogQL) return viewCounts?.get(selectedView);
+        return data?.results?.length;
+    }, [selectedView, isHogQL, viewCounts, data]);
 
     return {
         savedQueries,
         insights,
+        viewCounts,
         data,
         title,
         queryToRun,

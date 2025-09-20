@@ -75,6 +75,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const {
         savedQueries,
         insights,
+        viewCounts,
         data,
         title,
         queryToRun,
@@ -194,7 +195,11 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                                     {savedQueries && savedQueries.length > 0 && (
                                         <SelectGroup>
                                             <SelectLabel>Custom Views</SelectLabel>
-                                            {savedQueries.map(q => <SelectItem key={q.id} value={`custom__${q.id}`}>{q.name}</SelectItem>)}
+                                            {savedQueries.map(q => {
+                                                const count = viewCounts?.get(`custom__${q.id}`);
+                                                const label = count !== undefined ? `${q.name} (${count.toLocaleString()})` : q.name;
+                                                return <SelectItem key={q.id} value={`custom__${q.id}`}>{label}</SelectItem>
+                                            })}
                                         </SelectGroup>
                                     )}
                                     {insights && insights.length > 0 && (
@@ -205,7 +210,11 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                                     )}
                                     <SelectGroup>
                                         <SelectLabel>PostHog Tables</SelectLabel>
-                                        {POSTHOG_TABLES.map(t => <SelectItem key={t.value} value={`table__${t.value}`}>{t.name}</SelectItem>)}
+                                        {POSTHOG_TABLES.map(t => {
+                                            const count = viewCounts?.get(`table__${t.value}`);
+                                            const label = count !== undefined ? `${t.name} (${count.toLocaleString()})` : t.name;
+                                            return <SelectItem key={t.value} value={`table__${t.value}`}>{label}</SelectItem>
+                                        })}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
