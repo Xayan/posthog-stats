@@ -10,6 +10,13 @@ interface ApiConfig {
     baseUrl: string;
 }
 
+// Helper function to determine the correct table name for HogQL queries
+const getHogQLTableName = (table: TableInfo): string => {
+    // If table.id is purely numeric, it's likely a warehouse table, use name.
+    // Otherwise (e.g., 'events', 'persons'), use id.
+    return /^\d+$/.test(table.id) ? table.name : table.id;
+};
+
 export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, pagination: PaginationState, refreshInterval: number, onAuthError: () => void) => {
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
         queryKey: ['savedQueries', config],
@@ -73,7 +80,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         } else if (type === 'table' && value && availableTables) {
             const table = availableTables.find(t => t.id === value);
             if (table) {
-                baseQuery = `SELECT * FROM ${table.id}`; // Revert to using table.id here
+                baseQuery = `SELECT * FROM ${getHogQLTableName(table)}`; // Use helper function
                 title = `Table: ${table.name}`;
                 isHogQL = true;
             }
@@ -113,14 +120,14 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                 );
             });
 
-            // Count for available tables (excluding problematic ones)
+            // Count for available tables (excluding problematic 'cohort_people')
             availableTables
-                .filter(t => !['cohort_people', 'groups'].includes(t.id)) // cohort_people is now removed from availableTables, but keeping this filter for robustness
+                .filter(t => t.id !== 'cohort_people') // Only filter out cohort_people
                 .forEach(t => {
                     const viewId = `table__${t.id}`;
                     const countQuery: HogQLQueryBody = {
                         kind: "HogQLQuery",
-                        query: `SELECT count(1) FROM ${t.id}` // Revert to using table.id here
+                        query: `SELECT count(1) FROM ${getHogQLTableName(t)}` // Use helper function
                     };
                     countPromises.push(
                         runPostHogQuery({ ...config, query: countQuery })
