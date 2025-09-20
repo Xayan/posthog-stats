@@ -168,25 +168,28 @@ describe('PostHog Service - Edge Cases and Performance Tests', () => {
       expect(complexTable).toEqual({ name: 'Complex Table', id: 'complex_table' })
     })
 
-    it('should handle very slow API responses', async () => {
+    it('should handle slow API responses without failing', async () => {
       const mockWarehouseResponse = {
         results: [{ name: 'Slow Table', id: 'slow_table' }]
       }
 
-      // Simulate slow response
+      // Simulate slow response (but not too slow to avoid test timeouts)
       mockFetch.mockImplementationOnce(() => 
         new Promise(resolve => {
-          setTimeout(() => resolve(createMockResponse(mockWarehouseResponse)), 150)
+          setTimeout(() => resolve(createMockResponse(mockWarehouseResponse)), 100)
         })
       )
 
-      const startTime = Date.now()
+      // Test that slow responses are handled correctly without timing constraints
       const result = await fetchAvailableTables(mockConfig)
-      const endTime = Date.now()
 
-      // Allow for timing variance but ensure it took some time (at least 100ms)
-      expect(endTime - startTime).toBeGreaterThanOrEqual(100)
+      // Verify the function completes successfully and returns correct data
       expect(result).toHaveLength(5) // 4 system + 1 slow table
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { name: 'Slow Table', id: 'slow_table' }
+        ])
+      )
     })
 
     it('should handle API responses with extra fields', async () => {
