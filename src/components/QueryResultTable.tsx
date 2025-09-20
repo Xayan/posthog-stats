@@ -17,7 +17,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { formatCell } from "@/lib/formatters";
 
 interface QueryResultTableProps {
   data: {
@@ -66,7 +65,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
         },
         cell: ({ row }) => {
           const value = row.getValue(columnName);
-          return formatCell(value);
+          return value === null ? <em className="text-muted-foreground">null</em> : String(value);
         },
     }));
   }, [data.columns, selectedFields]);
