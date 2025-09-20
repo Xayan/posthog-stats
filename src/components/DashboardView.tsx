@@ -4,10 +4,12 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getPaginationRowModel,
+  getFilteredRowModel,
   type ColumnDef,
   type SortingState,
   type ColumnVisibilityState,
   type RowSelectionState,
+  type PaginationState,
 } from "@tanstack/react-table";
 import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
@@ -22,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FieldSelector } from "@/components/FieldSelector";
@@ -55,11 +56,20 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
+const PAGE_SIZES = [100, 250, 500, 1000];
+
 export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
     const [refreshInterval, setRefreshInterval] = useLocalStorage<number>('refreshInterval', REFRESH_INTERVALS[0].value);
-    const limitStorageKey = selectedView ? `limit_${selectedView}` : 'limit_default';
-    const [limit, setLimit] = useLocalStorage<number>(limitStorageKey, 1000);
+    
+    // Table state
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+    const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+    const [pagination, setPagination] = useLocalStorage<PaginationState>('tablePagination', {
+        pageIndex: 0,
+        pageSize: 100,
+    });
 
     const {
         savedQueries,
@@ -71,19 +81,15 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, limit, onSignOut);
+    } = usePostHogView(config, selectedView, pagination.pageSize, onSignOut);
 
-    // Table state
-    const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
-    const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-
-    // Reset table state when view changes
+    // Reset pagination when view changes
     React.useEffect(() => {
+        setPagination(p => ({ ...p, pageIndex: 0 }));
         setSorting([]);
         setColumnVisibility({});
         setRowSelection({});
-    }, [selectedView]);
+    }, [selectedView, setPagination]);
 
     const transformedData = React.useMemo(() => {
         if (!data?.results || !data?.columns) return [];
@@ -151,28 +157,22 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
             sorting,
             columnVisibility,
             rowSelection,
+            pagination,
         },
         onSortingChange: setSorting,
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: setRowSelection,
+        onPaginationChange: setPagination,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
     });
-
-    const handleLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(e.target.value, 10);
-        if (!isNaN(value) && value >= 0) {
-            setLimit(value);
-        } else if (e.target.value === '') {
-            setLimit(0);
-        }
-    };
 
     return (
         <>
             <ConnectionInfo projectId={config.projectId} onSignOut={onSignOut} />
-            
+
             {(savedQueries || insights) && (
                 <section>
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
@@ -214,16 +214,22 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="limit-input">Limit</Label>
-                            <Input
-                                id="limit-input"
-                                type="number"
-                                value={limit === 0 ? '' : limit}
-                                onChange={handleLimitChange}
-                                placeholder="e.g., 1000"
-                                min="0"
-                                disabled={!selectedView}
-                            />
+                            <Label htmlFor="rows-per-page">Rows per page</Label>
+                            <Select
+                                value={String(pagination.pageSize)}
+                                onValueChange={(value) => {
+                                    table.setPageSize(Number(value));
+                                }}
+                            >
+                                <SelectTrigger id="rows-per-page">
+                                    <SelectValue placeholder={pagination.pageSize} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_SIZES.map(size => (
+                                        <SelectItem key={size} value={String(size)}>{size}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                     <div className="max-w-4xl mx-auto mb-8">
@@ -246,7 +252,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
 
             <section className="mt-8">
                 {queryToRun && title && config && (
-                    <QueryDisplay 
+                    <QueryDisplay
                         title={title}
                         isLoading={isLoading && !data}
                         isError={isError}

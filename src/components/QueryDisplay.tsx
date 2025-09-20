@@ -40,7 +40,7 @@ export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, ref
     const intervalId = setInterval(() => {
       setTimerVisual(timerStates[timerStep]);
       timerStep = (timerStep + 1) % timerStates.length;
-    }, 1000);
+    }, 2000);
 
     return () => clearInterval(intervalId);
   }, [refetchInterval, isFetching]);
@@ -55,7 +55,7 @@ export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, ref
         </div>
       );
     }
-  
+
     if (isError) {
       return (
         <Alert variant="destructive">
@@ -65,11 +65,11 @@ export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, ref
         </Alert>
       );
     }
-  
+
     if (hasData) {
       return children;
     }
-  
+
     return null;
   }
 
