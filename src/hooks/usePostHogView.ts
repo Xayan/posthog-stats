@@ -17,8 +17,6 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
-const MAX_INSIGHT_LIMIT = 1000;
-
 export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, pagination: PaginationState, refreshInterval: number, onAuthError: () => void) => {
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
         queryKey: ['savedQueries', config],
@@ -98,8 +96,8 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             return { kind: "HogQLQuery", query: `${baseQuery} LIMIT ${pagination.pageSize} OFFSET ${offset}` };
         }
         if (insightQuery) {
-            // For insights, we can't easily do server-side pagination, so we fetch a larger set
-            return { ...insightQuery, source: { ...insightQuery.source, limit: MAX_INSIGHT_LIMIT } };
+            // Do not modify the insight query; send it as-is.
+            return insightQuery;
         }
         return null;
     }, [baseQuery, isHogQL, insightQuery, pagination]);
