@@ -63,7 +63,7 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
     return data.results as Insight[];
 };
 
-// New function to fetch tables from the PostHog data warehouse connections
+// Function to fetch tables from the PostHog data warehouse connections
 const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
     const apiRoot = getApiRoot(baseUrl);
     
@@ -84,29 +84,18 @@ const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): 
     }));
 };
 
-// New function to fetch system tables using HogQL SHOW TABLES
-const fetchSystemTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
-    const queryBody: HogQLQueryBody = {
-        kind: "HogQLQuery",
-        query: "SHOW TABLES"
-    };
-    const result = await runPostHogQuery({ projectId, apiKey, baseUrl, query: queryBody });
-    if (!result || !result.results) {
-        return [];
-    }
-    // Assuming SHOW TABLES returns a list of table names in the first column
-    return result.results.map((row: any[]) => ({
-        name: row[0],
-        id: row[0]
-    }));
-};
+// Explicitly define common PostHog system tables
+const getCoreSystemTables = (): TableInfo[] => [
+    { name: 'Events', id: 'events' },
+    { name: 'Persons', id: 'persons' },
+    { name: 'Cohort People', id: 'cohort_people' },
+    { name: 'Groups', id: 'groups' },
+];
 
 // Combined function to fetch all available tables (warehouse and system)
 export const fetchAvailableTables = async (config: ApiConfig): Promise<TableInfo[]> => {
-    const [warehouseTables, systemTables] = await Promise.all([
-        fetchWarehouseTables(config),
-        fetchSystemTables(config)
-    ]);
+    const warehouseTables = await fetchWarehouseTables(config);
+    const systemTables = getCoreSystemTables();
 
     const allTablesMap = new Map<string, TableInfo>();
     
