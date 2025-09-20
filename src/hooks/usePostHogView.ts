@@ -73,7 +73,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         } else if (type === 'table' && value && availableTables) {
             const table = availableTables.find(t => t.id === value);
             if (table) {
-                baseQuery = `SELECT * FROM ${value}`;
+                baseQuery = `SELECT * FROM ${table.name}`; // Use table.name here
                 title = `Table: ${table.name}`;
                 isHogQL = true;
             }
@@ -120,7 +120,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                     const viewId = `table__${t.id}`;
                     const countQuery: HogQLQueryBody = {
                         kind: "HogQLQuery",
-                        query: `SELECT count(1) FROM ${t.id}`
+                        query: `SELECT count(1) FROM ${t.name}` // Use table.name here
                     };
                     countPromises.push(
                         runPostHogQuery({ ...config, query: countQuery })
