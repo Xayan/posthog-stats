@@ -74,7 +74,7 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
                   placeholder="Your PostHog Project ID"
                 />
                 {field.state.meta.errors?.[0] ? (
-                  <em className="text-destructive text-sm">{field.state.meta.errors[0]}</em>
+                  <em className="text-destructive text-sm">{String(field.state.meta.errors[0])}</em>
                 ) : null}
               </div>
             )}
@@ -103,7 +103,7 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
                   placeholder="Your PostHog API Key"
                 />
                 {field.state.meta.errors?.[0] ? (
-                  <em className="text-destructive text-sm">{field.state.meta.errors[0]}</em>
+                  <em className="text-destructive text-sm">{String(field.state.meta.errors[0])}</em>
                 ) : null}
               </div>
             )}
