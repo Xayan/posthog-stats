@@ -92,32 +92,48 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         queryFn: async () => {
             if (!config || !savedQueries || !availableTables) return new Map();
 
-            const customQueries = savedQueries.map(q => 
-                `SELECT '${`custom__${q.id}`}' as view_id, count() as total FROM (${q.query.query})`
-            );
-
-            const tableQueries = availableTables
-                .filter(t => !['cohort_people', 'groups'].includes(t.id)) // Exclude cohort_people and groups from count
-                .map(t => 
-                    `SELECT '${`table__${t.id}`}' as view_id, count() as total FROM ${t.id}`
-                );
-
-            const allCountQueries = [...customQueries, ...tableQueries];
-            if (allCountQueries.length === 0) return new Map();
-
-            const batchQuery: HogQLQueryBody = {
-                kind: "HogQLQuery",
-                query: allCountQueries.join(' UNION ALL ')
-            };
-
-            const result = await runPostHogQuery({ ...config, query: batchQuery });
-            
             const countsMap = new Map<string, number>();
-            if (result?.results) {
-                result.results.forEach((row: [string, number]) => {
-                    countsMap.set(row[0], row[1]);
+            const countPromises: Promise<void>[] = [];
+
+            // Count for custom queries
+            savedQueries.forEach(q => {
+                const viewId = `custom__${q.id}`;
+                const countQuery: HogQLQueryBody = {
+                    kind: "HogQLQuery",
+                    query: `SELECT count(1) FROM (${q.query.query})`
+                };
+                countPromises.push(
+                    runPostHogQuery({ ...config, query: countQuery })
+                        .then(result => {
+                            if (result?.results && result.results.length > 0 && result.results[0].length > 0) {
+                                countsMap.set(viewId, result.results[0][0]);
+                            }
+                        })
+                        .catch(e => console.warn(`Failed to get count for custom query ${q.name}:`, e))
+                );
+            });
+
+            // Count for available tables (excluding problematic ones)
+            availableTables
+                .filter(t => !['cohort_people', 'groups'].includes(t.id))
+                .forEach(t => {
+                    const viewId = `table__${t.id}`;
+                    const countQuery: HogQLQueryBody = {
+                        kind: "HogQLQuery",
+                        query: `SELECT count(1) FROM ${t.id}`
+                    };
+                    countPromises.push(
+                        runPostHogQuery({ ...config, query: countQuery })
+                            .then(result => {
+                                if (result?.results && result.results.length > 0 && result.results[0].length > 0) {
+                                    countsMap.set(viewId, result.results[0][0]);
+                                }
+                            })
+                            .catch(e => console.warn(`Failed to get count for table ${t.name}:`, e))
+                    );
                 });
-            }
+
+            await Promise.allSettled(countPromises); // Use allSettled to wait for all promises regardless of success/failure
             return countsMap;
         },
         enabled: !!config && !!savedQueries && !!availableTables,
