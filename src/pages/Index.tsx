@@ -1,16 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,6 +14,7 @@ import { showError } from "@/utils/toast";
 import { fetchSavedWarehouseQueries, SavedWarehouseQuery } from "@/services/posthog";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
+import { ConfigurationForm } from "@/components/ConfigurationForm";
 
 interface ApiConfig {
     projectId: string;
@@ -39,27 +30,18 @@ const REFRESH_INTERVALS = [
 ];
 
 const Index = () => {
-    const [projectId, setProjectId] = React.useState("");
-    const [apiKey, setApiKey] = React.useState("");
-    const [region, setRegion] = React.useState("US");
     const [config, setConfig] = React.useState<ApiConfig | null>(null);
 
     const [selectedQuery, setSelectedQuery] = React.useState<SavedWarehouseQuery | null>(null);
     const [refreshInterval, setRefreshInterval] = React.useState(REFRESH_INTERVALS[0].value);
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (projectId && apiKey) {
-            setConfig({ projectId, apiKey, region });
-        } else {
-            showError("Please fill in Project ID and API Key.");
-        }
+    const handleSubmit = (values: ApiConfig) => {
+        setConfig(values);
     };
     
     const handleSignOut = () => {
         setConfig(null);
         setSelectedQuery(null);
-        setApiKey(""); 
     };
 
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery({
@@ -92,41 +74,7 @@ const Index = () => {
             </header>
 
             {!config ? (
-                <Card className="max-w-2xl mx-auto">
-                    <form onSubmit={handleSubmit}>
-                        <CardHeader>
-                            <CardTitle>Configuration</CardTitle>
-                            <CardDescription>Provide your PostHog Project ID and Personal API Key.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="projectId">Project ID</Label>
-                                <Input id="projectId" placeholder="Your PostHog Project ID" value={projectId} onChange={(e) => setProjectId(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="apiKey">Personal API Key</Label>
-                                <Input id="apiKey" type="password" placeholder="Your PostHog API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="region">Region</Label>
-                                <Select value={region} onValueChange={setRegion}>
-                                    <SelectTrigger id="region">
-                                        <SelectValue placeholder="Select region" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="US">US</SelectItem>
-                                        <SelectItem value="EU">EU</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" disabled={isLoadingQueries}>
-                                {isLoadingQueries ? "Connecting..." : "Load Saved Queries"}
-                            </Button>
-                        </CardFooter>
-                    </form>
-                </Card>
+                <ConfigurationForm onSubmit={handleSubmit} isLoading={isLoadingQueries} />
             ) : (
                 <>
                     <ConnectionInfo projectId={config.projectId} onSignOut={handleSignOut} />
@@ -138,7 +86,7 @@ const Index = () => {
                             <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
                                 <div className="space-y-2">
                                     <Label htmlFor="query-select">Custom View</Label>
-                                    <Select onValueChange={handleSelectQuery}>
+                                    <Select onValueChange={handleSelectQuery} value={selectedQuery?.id ?? ""}>
                                         <SelectTrigger id="query-select">
                                             <SelectValue placeholder="Select a view to display" />
                                         </SelectTrigger>
