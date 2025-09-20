@@ -14,6 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,12 +32,14 @@ interface FormData {
     projectId: string;
     apiKey: string;
     dateRange: DateRange;
+    region: string;
 }
 
 const Index = () => {
     const [formData, setFormData] = React.useState<FormData | null>(null);
     const [projectId, setProjectId] = React.useState("");
     const [apiKey, setApiKey] = React.useState("");
+    const [region, setRegion] = React.useState("US");
     const [date, setDate] = React.useState<DateRange | undefined>({
         from: addDays(new Date(), -7),
         to: new Date(),
@@ -43,6 +52,7 @@ const Index = () => {
                 projectId,
                 apiKey,
                 dateRange: { from: date.from, to: date.to },
+                region,
             });
         } else {
             showError("Please fill in all fields.");
@@ -58,6 +68,7 @@ const Index = () => {
                 apiKey: formData.apiKey,
                 dateFrom: formData.dateRange.from,
                 dateTo: formData.dateRange.to,
+                region: formData.region,
             });
         },
         enabled: !!formData,
@@ -91,6 +102,18 @@ const Index = () => {
                         <div className="space-y-2">
                             <Label htmlFor="apiKey">Personal API Key</Label>
                             <Input id="apiKey" type="password" placeholder="Your PostHog API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="region">Region</Label>
+                            <Select value={region} onValueChange={setRegion}>
+                                <SelectTrigger id="region">
+                                    <SelectValue placeholder="Select region" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="US">US</SelectItem>
+                                    <SelectItem value="EU">EU</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="date">Date Range</Label>

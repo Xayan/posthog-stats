@@ -1,19 +1,19 @@
 import { format } from 'date-fns';
 
-const POSTHOG_API_URL = "https://app.posthog.com/api/";
-
 interface FetchInsightsParams {
     projectId: string;
     apiKey: string;
     dateFrom: Date;
     dateTo: Date;
+    region: string;
 }
 
-export const fetchInsights = async ({ projectId, apiKey, dateFrom, dateTo }: FetchInsightsParams) => {
+export const fetchInsights = async ({ projectId, apiKey, dateFrom, dateTo, region }: FetchInsightsParams) => {
+    const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
     const formattedDateFrom = format(dateFrom, 'yyyy-MM-dd');
     const formattedDateTo = format(dateTo, 'yyyy-MM-dd');
 
-    const response = await fetch(`${POSTHOG_API_URL}projects/${projectId}/insights/?date_from=${formattedDateFrom}&date_to=${formattedDateTo}`, {
+    const response = await fetch(`${baseUrl}projects/${projectId}/insights/?date_from=${formattedDateFrom}&date_to=${formattedDateTo}`, {
         headers: {
             'Authorization': `Bearer ${apiKey}`
         }
