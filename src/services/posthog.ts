@@ -1,28 +1,56 @@
 import { format } from 'date-fns';
 
-interface FetchInsightsParams {
+export interface SavedWarehouseQuery {
+    id: string;
+    name: string;
+    query: {
+        query: string;
+    };
+}
+
+interface ApiConfig {
     projectId: string;
     apiKey: string;
-    dateFrom: Date;
-    dateTo: Date;
     region: string;
 }
 
-export const fetchInsights = async ({ projectId, apiKey, dateFrom, dateTo, region }: FetchInsightsParams) => {
+export const fetchSavedWarehouseQueries = async ({ projectId, apiKey, region }: ApiConfig) => {
     const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
-    const formattedDateFrom = format(dateFrom, 'yyyy-MM-dd');
-    const formattedDateTo = format(dateTo, 'yyyy-MM-dd');
-
-    const response = await fetch(`${baseUrl}projects/${projectId}/insights/?date_from=${formattedDateFrom}&date_to=${formattedDateTo}`, {
+    const response = await fetch(`${baseUrl}projects/${projectId}/warehouse_saved_queries/`, {
         headers: {
             'Authorization': `Bearer ${apiKey}`
         }
     });
-
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch insights from PostHog. Check your Project ID and API Key.');
+        throw new Error(errorData.detail || 'Failed to fetch saved queries. Check your credentials and permissions.');
     }
+    const data = await response.json();
+    return data.results as SavedWarehouseQuery[];
+};
 
+interface RunQueryConfig extends ApiConfig {
+    query: string;
+}
+
+export const runHogQLQuery = async ({ projectId, apiKey, region, query }: RunQueryConfig) => {
+    const baseUrl = region === 'EU' ? "https://eu.posthog.com/api/" : "https://app.posthog.com/api/";
+    const response = await fetch(`${baseUrl}projects/${projectId}/query`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            query: {
+                kind: "HogQLQuery",
+                query: query
+            }
+        })
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to run query.');
+    }
     return response.json();
 };

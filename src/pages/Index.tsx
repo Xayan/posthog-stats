@@ -1,7 +1,5 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { DateRange } from "react-day-picker";
-import { addDays } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,71 +19,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRangePicker } from "@/components/DateRangePicker";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { Skeleton } from "@/components/ui/skeleton";
 import { showError } from "@/utils/toast";
-import { fetchInsights } from "@/services/posthog";
-import { InsightCard } from "@/components/InsightCard";
+import { fetchSavedWarehouseQueries, SavedWarehouseQuery } from "@/services/posthog";
+import { QueryDisplay } from "@/components/QueryDisplay";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface FormData {
+interface ApiConfig {
     projectId: string;
     apiKey: string;
-    dateRange: DateRange;
     region: string;
 }
 
 const Index = () => {
-    const [formData, setFormData] = React.useState<FormData | null>(null);
     const [projectId, setProjectId] = React.useState("");
     const [apiKey, setApiKey] = React.useState("");
     const [region, setRegion] = React.useState("US");
-    const [date, setDate] = React.useState<DateRange | undefined>({
-        from: addDays(new Date(), -7),
-        to: new Date(),
-    });
+    const [config, setConfig] = React.useState<ApiConfig | null>(null);
+
+    const [selectedQuery1, setSelectedQuery1] = React.useState<SavedWarehouseQuery | null>(null);
+    const [selectedQuery2, setSelectedQuery2] = React.useState<SavedWarehouseQuery | null>(null);
+    const [selectedQuery3, setSelectedQuery3] = React.useState<SavedWarehouseQuery | null>(null);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (projectId && apiKey && date?.from && date?.to) {
-            setFormData({
-                projectId,
-                apiKey,
-                dateRange: { from: date.from, to: date.to },
-                region,
-            });
+        if (projectId && apiKey) {
+            setConfig({ projectId, apiKey, region });
         } else {
-            showError("Please fill in all fields.");
+            showError("Please fill in Project ID and API Key.");
         }
     };
 
-    const { data, isLoading, isError, error, isSuccess } = useQuery({
-        queryKey: ['posthogInsights', formData],
+    const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery({
+        queryKey: ['savedQueries', config],
         queryFn: () => {
-            if (!formData) throw new Error("Form data is not available");
-            return fetchInsights({
-                projectId: formData.projectId,
-                apiKey: formData.apiKey,
-                dateFrom: formData.dateRange.from,
-                dateTo: formData.dateRange.to,
-                region: formData.region,
-            });
+            if (!config) throw new Error("Config not set");
+            return fetchSavedWarehouseQueries(config);
         },
-        enabled: !!formData,
+        enabled: !!config,
         retry: false,
     });
 
     React.useEffect(() => {
-        if (isError && error) {
-            showError(error.message);
+        if (isQueriesError && queriesError) {
+            showError(queriesError.message);
         }
-    }, [isError, error]);
+    }, [isQueriesError, queriesError]);
+
+    const handleSelectQuery = (queryId: string, selectorIndex: number) => {
+        const query = savedQueries?.find(q => q.id === queryId) || null;
+        if (selectorIndex === 1) setSelectedQuery1(query);
+        if (selectorIndex === 2) setSelectedQuery2(query);
+        if (selectorIndex === 3) setSelectedQuery3(query);
+    };
 
     return (
         <div className="container mx-auto p-4 md:p-8">
             <header className="text-center mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">PostHog Stats Dashboard</h1>
-                <p className="text-muted-foreground">Enter your details to fetch your project insights.</p>
+                <h1 className="text-3xl font-bold tracking-tight">PostHog Custom Views</h1>
+                <p className="text-muted-foreground">Display data from your saved Data Warehouse queries.</p>
             </header>
 
             <Card className="max-w-2xl mx-auto">
@@ -115,53 +107,69 @@ const Index = () => {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="date">Date Range</Label>
-                            <DateRangePicker date={date} setDate={setDate} />
-                        </div>
                     </CardContent>
                     <CardFooter>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading ? "Fetching..." : "Fetch Insights"}
+                        <Button type="submit" disabled={isLoadingQueries}>
+                            {isLoadingQueries ? "Loading..." : "Load Saved Queries"}
                         </Button>
                     </CardFooter>
                 </form>
             </Card>
 
-            <section className="mt-12">
-                {isLoading && (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <Card key={i}>
-                                <CardHeader>
-                                    <Skeleton className="h-6 w-3/4" />
-                                    <Skeleton className="h-4 w-1/2" />
-                                </CardHeader>
-                                <CardContent>
-                                    <Skeleton className="h-24 w-full" />
-                                </CardContent>
-                            </Card>
+            {config && isLoadingQueries && (
+                <div className="text-center mt-8">
+                    <p>Loading your saved queries...</p>
+                </div>
+            )}
+
+            {savedQueries && savedQueries.length > 0 && (
+                <section className="mt-12">
+                    <h2 className="text-2xl font-semibold text-center mb-6">Display Custom Views</h2>
+                    <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                        {[1, 2, 3].map(index => (
+                            <div className="space-y-2" key={index}>
+                                <Label htmlFor={`query-select-${index}`}>View {index}</Label>
+                                <Select onValueChange={(value) => handleSelectQuery(value, index)}>
+                                    <SelectTrigger id={`query-select-${index}`}>
+                                        <SelectValue placeholder="Select a view" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {savedQueries.map(q => <SelectItem key={q.id} value={q.id}>{q.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         ))}
                     </div>
-                )}
+                </section>
+            )}
+            
+            {savedQueries && savedQueries.length === 0 && (
+                 <div className="text-center py-12">
+                    <p className="text-muted-foreground">No saved Data Warehouse queries found for this project.</p>
+                </div>
+            )}
 
-                {isSuccess && data?.results.length > 0 && (
-                    <>
-                        <h2 className="text-2xl font-semibold mb-4 text-center">Your Insights</h2>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {data.results.map((insight: any) => (
-                                <InsightCard key={insight.id} insight={insight} />
-                            ))}
-                        </div>
-                    </>
+            <section className="mt-8 space-y-12">
+                {selectedQuery1 && config && (
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4">{selectedQuery1.name}</h3>
+                        <QueryDisplay query={selectedQuery1.query.query} {...config} />
+                    </div>
                 )}
-
-                {isSuccess && data?.results.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-muted-foreground">No insights found for the selected period.</p>
+                {selectedQuery2 && config && (
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4">{selectedQuery2.name}</h3>
+                        <QueryDisplay query={selectedQuery2.query.query} {...config} />
+                    </div>
+                )}
+                {selectedQuery3 && config && (
+                    <div>
+                        <h3 className="text-xl font-semibold mb-4">{selectedQuery3.name}</h3>
+                        <QueryDisplay query={selectedQuery3.query.query} {...config} />
                     </div>
                 )}
             </section>
+
             <MadeWithDyad />
         </div>
     );
