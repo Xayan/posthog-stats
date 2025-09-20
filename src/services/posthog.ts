@@ -57,7 +57,7 @@ type HogQLQueryBody = {
 
 type SavedInsightNodeBody = {
     kind: "SavedInsightNode";
-    id: string; // Use 'id' for the short_id of the insight
+    shortId: string; // Changed from 'id' to 'shortId'
 };
 
 type PostHogQueryBody = HogQLQueryBody | SavedInsightNodeBody;
