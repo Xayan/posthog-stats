@@ -10,11 +10,9 @@ interface ApiConfig {
     baseUrl: string;
 }
 
-// Helper function to determine the correct table name for HogQL queries
+// Helper function to determine the correct table name for HogQL queries based on sourceType
 const getHogQLTableName = (table: TableInfo): string => {
-    // If table.id is purely numeric, it's likely a warehouse table, use name.
-    // Otherwise (e.g., 'events', 'persons'), use id.
-    return /^\d+$/.test(table.id) ? table.name : table.id;
+    return table.sourceType === 'warehouse' ? table.name : table.id;
 };
 
 export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, pagination: PaginationState, refreshInterval: number, onAuthError: () => void) => {
@@ -120,9 +118,8 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                 );
             });
 
-            // Count for available tables (excluding problematic 'cohort_people')
+            // Count for all available tables (no specific filter needed now that sourceType handles naming)
             availableTables
-                .filter(t => t.id !== 'cohort_people') // Only filter out cohort_people
                 .forEach(t => {
                     const viewId = `table__${t.id}`;
                     const countQuery: HogQLQueryBody = {

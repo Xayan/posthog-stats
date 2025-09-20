@@ -18,6 +18,7 @@ export interface Insight {
 export interface TableInfo {
     name: string;
     id: string;
+    sourceType: 'system' | 'warehouse'; // Added sourceType
 }
 
 interface ApiConfig {
@@ -80,17 +81,17 @@ const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): 
     const data = await response.json();
     return data.results.map((table: { name: string; id: string }) => ({
         name: table.name,
-        id: table.id
+        id: table.id,
+        sourceType: 'warehouse' // Tag as warehouse table
     }));
 };
 
 // Explicitly define common PostHog system tables
 const getCoreSystemTables = (): TableInfo[] => [
-    { name: 'Events', id: 'events' },
-    { name: 'Persons', id: 'persons' },
-    // { name: 'Cohort People', id: 'cohort_people' }, // Removed Cohort People
-    { name: 'Groups', id: 'groups' },
-    { name: 'Sessions', id: 'sessions' },
+    { name: 'Events', id: 'events', sourceType: 'system' },
+    { name: 'Persons', id: 'persons', sourceType: 'system' },
+    { name: 'Groups', id: 'groups', sourceType: 'system' },
+    { name: 'Sessions', id: 'sessions', sourceType: 'system' },
 ];
 
 // Combined function to fetch all available tables (warehouse and system)
