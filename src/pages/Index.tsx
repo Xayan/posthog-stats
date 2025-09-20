@@ -128,10 +128,12 @@ const Index = () => {
 
                     <section className="mt-8">
                         {selectedQuery && config && (
-                            <div>
-                                <h3 className="text-xl font-semibold mb-4">{selectedQuery.name}</h3>
-                                <QueryDisplay query={selectedQuery.query.query} {...config} refetchInterval={refreshInterval} />
-                            </div>
+                            <QueryDisplay 
+                                title={selectedQuery.name}
+                                query={selectedQuery.query.query} 
+                                {...config} 
+                                refetchInterval={refreshInterval} 
+                            />
                         )}
                     </section>
                 </>
