@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { useForm } from '@tanstack/react-form';
-import { zodValidator } from '@tanstack/zod-form-adapter';
 import { z } from 'zod';
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +21,7 @@ import {
 } from "@/components/ui/select";
 
 interface ConfigurationFormProps {
-  onSubmit: (values: { projectId: string; apiKey: string; region: string }) => void;
+  onSubmit: (values: { projectId: string; apiKey:string; region: string }) => void;
   isLoading: boolean;
 }
 
@@ -36,7 +35,6 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
     onSubmit: async ({ value }) => {
       onSubmit(value);
     },
-    validatorAdapter: zodValidator,
   });
 
   return (
@@ -56,7 +54,13 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
           <form.Field
             name="projectId"
             validators={{
-              onChange: z.string().min(1, 'Project ID is required.'),
+              onChange: ({ value }) => {
+                const schema = z.string().min(1, 'Project ID is required.');
+                const result = schema.safeParse(value);
+                if (!result.success) {
+                  return result.error.issues[0].message;
+                }
+              },
             }}
             children={(field) => (
               <div className="space-y-2">
@@ -69,8 +73,8 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Your PostHog Project ID"
                 />
-                {field.state.meta.touchedErrors ? (
-                  <em className="text-destructive text-sm">{field.state.meta.touchedErrors}</em>
+                {field.state.meta.errors?.[0] ? (
+                  <em className="text-destructive text-sm">{field.state.meta.errors[0]}</em>
                 ) : null}
               </div>
             )}
@@ -78,7 +82,13 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
           <form.Field
             name="apiKey"
             validators={{
-              onChange: z.string().min(1, 'API Key is required.'),
+              onChange: ({ value }) => {
+                const schema = z.string().min(1, 'API Key is required.');
+                const result = schema.safeParse(value);
+                if (!result.success) {
+                  return result.error.issues[0].message;
+                }
+              },
             }}
             children={(field) => (
               <div className="space-y-2">
@@ -92,8 +102,8 @@ export const ConfigurationForm = ({ onSubmit, isLoading }: ConfigurationFormProp
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Your PostHog API Key"
                 />
-                {field.state.meta.touchedErrors ? (
-                  <em className="text-destructive text-sm">{field.state.meta.touchedErrors}</em>
+                {field.state.meta.errors?.[0] ? (
+                  <em className="text-destructive text-sm">{field.state.meta.errors[0]}</em>
                 ) : null}
               </div>
             )}
