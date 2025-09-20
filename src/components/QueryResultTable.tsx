@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils"; // Import cn for conditional class merging
 
 interface QueryResultTableProps {
   data: {
@@ -54,12 +55,12 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-              className="px-2 py-1 -ml-2"
+              className="h-auto px-2 py-1 -ml-2 text-xs" // Smaller padding and font for header button
             >
               {columnName}
-              {column.getIsSorted() === 'asc' && <ArrowUp className="ml-2 h-4 w-4" />}
-              {column.getIsSorted() === 'desc' && <ArrowDown className="ml-2 h-4 w-4" />}
-              {column.getIsSorted() === false && <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+              {column.getIsSorted() === 'asc' && <ArrowUp className="ml-1 h-3 w-3" />} {/* Smaller icons */}
+              {column.getIsSorted() === 'desc' && <ArrowDown className="ml-1 h-3 w-3" />} {/* Smaller icons */}
+              {column.getIsSorted() === false && <ChevronsUpDown className="ml-1 h-3 w-3 opacity-50" />} {/* Smaller icons */}
             </Button>
           )
         },
@@ -98,7 +99,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id}>
               {headerGroup.headers.map(header => (
-                <TableHead key={header.id}>
+                <TableHead key={header.id} className="h-8 px-2 text-xs font-semibold"> {/* Smaller header height, padding, and font */}
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -112,13 +113,18 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map(row => (
+            table.getRowModel().rows.map((row, index) => (
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
+                className={cn(
+                  "h-8 text-xs", // Smaller row height and font
+                  index % 2 === 0 ? "bg-muted/20" : "bg-background", // Alternating row colors
+                  "hover:bg-accent/50" // Hover color
+                )}
               >
                 {row.getVisibleCells().map(cell => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className="p-2"> {/* Smaller cell padding */}
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -126,7 +132,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
+              <TableCell colSpan={columns.length} className="h-24 text-center text-sm"> {/* Adjusted font size */}
                 No results.
               </TableCell>
             </TableRow>
@@ -134,7 +140,7 @@ export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps
         </TableBody>
       </Table>
       {rowCount > 0 && (
-        <div className="p-2 text-sm text-muted-foreground text-right border-t">
+        <div className="p-2 text-xs text-muted-foreground text-right border-t"> {/* Smaller font for row count */}
           Showing {rowCount} rows
         </div>
       )}
