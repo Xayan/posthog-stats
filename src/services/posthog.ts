@@ -15,6 +15,11 @@ export interface Insight {
     query: any; // Assume the insight object contains its full query definition
 }
 
+export interface TableInfo {
+    name: string;
+    id: string;
+}
+
 interface ApiConfig {
     projectId: string;
     apiKey: string;
@@ -58,17 +63,62 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
     return data.results as Insight[];
 };
 
-type HogQLQueryBody = {
+// Function to fetch tables from the PostHog data warehouse connections
+const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
+    const apiRoot = getApiRoot(baseUrl);
+    
+    const response = await fetch(`${apiRoot}projects/${projectId}/warehouse_tables/`, {
+        headers: {
+            'Authorization': `Bearer ${apiKey}`
+        }
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch warehouse tables. Check your credentials and permissions.');
+    }
+    const data = await response.json();
+    return data.results.map((table: { name: string; id: string }) => ({
+        name: table.name,
+        id: table.id
+    }));
+};
+
+// Explicitly define common PostHog system tables
+const getCoreSystemTables = (): TableInfo[] => [
+    { name: 'Events', id: 'events' },
+    { name: 'Persons', id: 'persons' },
+    { name: 'Cohort People', id: 'cohort_people' },
+    { name: 'Groups', id: 'groups' },
+];
+
+// Combined function to fetch all available tables (warehouse and system)
+export const fetchAvailableTables = async (config: ApiConfig): Promise<TableInfo[]> => {
+    const warehouseTables = await fetchWarehouseTables(config);
+    const systemTables = getCoreSystemTables();
+
+    const allTablesMap = new Map<string, TableInfo>();
+    
+    // Add system tables first
+    systemTables.forEach(table => allTablesMap.set(table.id, table));
+    
+    // Add warehouse tables, overwriting if there's a name collision (warehouse takes precedence)
+    warehouseTables.forEach(table => allTablesMap.set(table.id, table));
+
+    return Array.from(allTablesMap.values());
+};
+
+export type HogQLQueryBody = {
     kind: "HogQLQuery";
     query: string;
 };
 
-type InsightVizNodeBody = {
+export type InsightVizNodeBody = {
     kind: "InsightVizNode";
     source: any; // The source is the actual insight query definition
 };
 
-type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;
+export type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;
 
 interface RunQueryConfig extends ApiConfig {
     query: PostHogQueryBody;
