@@ -124,8 +124,17 @@ const Index = () => {
     const [selectedFields, setSelectedFields] = useLocalStorage<string[] | null>(storageKey, null);
 
     React.useEffect(() => {
-        if (allFields.length > 0 && selectedFields === null) {
-            setSelectedFields(allFields);
+        if (allFields.length > 0) {
+            if (selectedFields === null) {
+                setSelectedFields(allFields);
+            } else {
+                const validSelectedFields = selectedFields.filter(field => allFields.includes(field));
+                if (validSelectedFields.length === 0) {
+                    setSelectedFields(allFields);
+                } else if (validSelectedFields.length !== selectedFields.length) {
+                    setSelectedFields(validSelectedFields);
+                }
+            }
         }
     }, [allFields, selectedFields, setSelectedFields]);
 
