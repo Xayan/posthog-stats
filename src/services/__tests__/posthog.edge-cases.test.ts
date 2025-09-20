@@ -176,7 +176,7 @@ describe('PostHog Service - Edge Cases and Performance Tests', () => {
       // Simulate slow response
       mockFetch.mockImplementationOnce(() => 
         new Promise(resolve => {
-          setTimeout(() => resolve(createMockResponse(mockWarehouseResponse)), 100)
+          setTimeout(() => resolve(createMockResponse(mockWarehouseResponse)), 150)
         })
       )
 
@@ -184,8 +184,8 @@ describe('PostHog Service - Edge Cases and Performance Tests', () => {
       const result = await fetchAvailableTables(mockConfig)
       const endTime = Date.now()
 
-      // Allow for some timing variance (at least 90ms)
-      expect(endTime - startTime).toBeGreaterThanOrEqual(90)
+      // Allow for timing variance but ensure it took some time (at least 100ms)
+      expect(endTime - startTime).toBeGreaterThanOrEqual(100)
       expect(result).toHaveLength(5) // 4 system + 1 slow table
     })
 
