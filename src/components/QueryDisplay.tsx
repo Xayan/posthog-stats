@@ -10,14 +10,16 @@ interface QueryDisplayProps {
   projectId: string;
   apiKey: string;
   region: string;
+  refetchInterval: number;
 }
 
-export const QueryDisplay = ({ query, projectId, apiKey, region }: QueryDisplayProps) => {
+export const QueryDisplay = ({ query, projectId, apiKey, region, refetchInterval }: QueryDisplayProps) => {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['hogqlQuery', projectId, query],
     queryFn: () => runHogQLQuery({ projectId, apiKey, region, query }),
     enabled: !!query && !!projectId && !!apiKey,
     retry: false,
+    refetchInterval: refetchInterval,
   });
 
   if (isLoading) {
