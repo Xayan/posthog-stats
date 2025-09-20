@@ -87,7 +87,8 @@ const Index = () => {
 
     const [viewType, viewValue] = selectedView ? selectedView.split('__') : [null, null];
 
-    let queryToRun: { kind: string; query?: string; shortId?: string } | null = null;
+    // Explicitly type queryToRun as PostHogQueryBody | null
+    let queryToRun: Parameters<typeof runPostHogQuery>[0]['query'] | null = null;
     let title: string | null = null;
 
     if (viewType === 'custom' && viewValue && savedQueries) {
