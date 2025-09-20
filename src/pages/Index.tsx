@@ -10,15 +10,33 @@ interface ApiConfig {
     region:string;
 }
 
+const getEnvConfig = (): ApiConfig | null => {
+    const projectId = import.meta.env.VITE_POSTHOG_PROJECT_ID;
+    const apiKey = import.meta.env.VITE_POSTHOG_PERSONAL_API_KEY;
+    const region = import.meta.env.VITE_POSTHOG_REGION;
+
+    if (projectId && apiKey && region) {
+        if (['US', 'EU'].includes(region.toUpperCase())) {
+            return { projectId, apiKey, region: region.toUpperCase() };
+        }
+        console.warn(`Invalid VITE_POSTHOG_REGION found: "${region}". It should be "US" or "EU".`);
+    }
+    return null;
+};
+
 const Index = () => {
-    const [config, setConfig] = useLocalStorage<ApiConfig | null>('posthogConfig', null);
+    const envConfig = React.useMemo(() => getEnvConfig(), []);
+    const [storedConfig, setStoredConfig] = useLocalStorage<ApiConfig | null>('posthogConfig', null);
+
+    const config = envConfig || storedConfig;
+    const isEnvConfig = !!envConfig;
 
     const handleSubmit = (values: ApiConfig) => {
-        setConfig(values);
+        setStoredConfig(values);
     };
     
     const handleSignOut = () => {
-        setConfig(null);
+        setStoredConfig(null);
     };
 
     return (
@@ -31,7 +49,7 @@ const Index = () => {
             {!config ? (
                 <ConfigurationForm onSubmit={handleSubmit} isLoading={false} />
             ) : (
-                <DashboardView config={config} onSignOut={handleSignOut} />
+                <DashboardView config={config} onSignOut={handleSignOut} isEnvConfig={isEnvConfig} />
             )}
 
             <MadeWithDyad />
