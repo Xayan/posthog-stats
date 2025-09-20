@@ -147,9 +147,3 @@ export const ConfigurationForm = ({ onSubmit, isLoading, initialValues }: Config
     </Card>
   );
 };
-
-I have not yet reviewed the code.
-
-Previous agent, while it did a monumental amount of work, ended on 2 seemingly tiny errors, and the whole task was deemed as failure.
-
-So now I need you to fix these 2 remaining issues:
