@@ -22,12 +22,12 @@ export const QueryDisplay = ({ title, isLoading, isError, error, isFetching, ref
 
     if (isFetching) {
       let state = 0;
-      const busyStates = ["[.. ]", "[ ..]"];
+      const busyStates = ["[## ]", "[ ##]"];
       setTimerVisual(busyStates[0]);
       intervalId = setInterval(() => {
         state = (state + 1) % busyStates.length;
         setTimerVisual(busyStates[state]);
-      }, 500);
+      }, 200);
     } else if (refetchInterval > 0) {
       let timerStep = 0;
       const timerStates = ["[   ]", "[.  ]", "[.. ]", "[ ..]", "[  .]"];

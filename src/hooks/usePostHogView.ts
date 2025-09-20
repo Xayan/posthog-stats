@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { type PaginationState } from "@tanstack/react-table";
 import { fetchSavedWarehouseQueries, fetchInsights, runPostHogQuery, SavedWarehouseQuery, Insight } from "@/services/posthog";
 import { showError } from "@/utils/toast";
 
@@ -16,7 +17,9 @@ const POSTHOG_TABLES = [
     { name: 'Groups', value: 'groups' },
 ];
 
-export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, limit: number, refreshInterval: number, onAuthError: () => void) => {
+const MAX_INSIGHT_LIMIT = 1000;
+
+export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, pagination: PaginationState, refreshInterval: number, onAuthError: () => void) => {
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
         queryKey: ['savedQueries', config],
         queryFn: () => {
@@ -48,28 +51,58 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         }
     }, [isQueriesError, queriesError, isInsightsError, insightsError, onAuthError]);
 
-    const [viewType, viewValue] = selectedView ? selectedView.split('__') : [null, null];
+    const { viewType, viewValue, baseQuery, title, isHogQL, insightQuery } = React.useMemo(() => {
+        const [type, value] = selectedView ? selectedView.split('__') : [null, null];
+        let baseQuery: string | null = null;
+        let title: string | null = null;
+        let isHogQL = false;
+        let insightQuery: object | null = null;
 
-    let queryToRun: Parameters<typeof runPostHogQuery>[0]['query'] | null = null;
-    let title: string | null = null;
+        if (type === 'custom' && value && savedQueries) {
+            const query = savedQueries.find(q => q.id === value);
+            if (query) {
+                baseQuery = query.query.query;
+                title = query.name;
+                isHogQL = true;
+            }
+        } else if (type === 'table' && value) {
+            baseQuery = `SELECT * FROM ${value}`;
+            const tableDef = POSTHOG_TABLES.find(t => t.value === value);
+            title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${value}`;
+            isHogQL = true;
+        } else if (type === 'insight' && value && insights) {
+            const insight = insights.find(i => i.short_id === value);
+            if (insight && insight.query) {
+                insightQuery = insight.query;
+                title = `Insight: ${insight.name}`;
+            }
+        }
+        return { viewType: type, viewValue: value, baseQuery, title, isHogQL, insightQuery };
+    }, [selectedView, savedQueries, insights]);
 
-    if (viewType === 'custom' && viewValue && savedQueries) {
-        const query = savedQueries.find(q => q.id === viewValue);
-        if (query) {
-            queryToRun = { kind: "HogQLQuery", query: `${query.query.query} LIMIT ${limit}` };
-            title = query.name;
+    const { data: countData } = useQuery({
+        queryKey: ['posthogQueryCount', config, baseQuery],
+        queryFn: async () => {
+            if (!config || !baseQuery) return 0;
+            const countQuery = { kind: "HogQLQuery", query: `SELECT count() FROM (${baseQuery})` };
+            const result = await runPostHogQuery({ ...config, query: countQuery });
+            return result?.results?.[0]?.[0] ?? 0;
+        },
+        enabled: !!config && !!baseQuery && isHogQL,
+        refetchInterval,
+    });
+
+    const queryToRun = React.useMemo(() => {
+        if (isHogQL && baseQuery) {
+            const offset = pagination.pageIndex * pagination.pageSize;
+            return { kind: "HogQLQuery", query: `${baseQuery} LIMIT ${pagination.pageSize} OFFSET ${offset}` };
         }
-    } else if (viewType === 'table' && viewValue) {
-        queryToRun = { kind: "HogQLQuery", query: `SELECT * FROM ${viewValue} LIMIT ${limit}` };
-        const tableDef = POSTHOG_TABLES.find(t => t.value === viewValue);
-        title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
-    } else if (viewType === 'insight' && viewValue && insights) {
-        const insight = insights.find(i => i.short_id === viewValue);
-        if (insight && insight.query) {
-            queryToRun = insight.query;
-            title = `Insight: ${insight.name}`;
+        if (insightQuery) {
+            // For insights, we can't easily do server-side pagination, so we fetch a larger set
+            return { ...insightQuery, source: { ...insightQuery.source, limit: MAX_INSIGHT_LIMIT } };
         }
-    }
+        return null;
+    }, [baseQuery, isHogQL, insightQuery, pagination]);
 
     const { data, isLoading, isError, error, isFetching } = useQuery({
         queryKey: ['posthogQuery', config, queryToRun],
@@ -78,9 +111,10 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             return runPostHogQuery({ ...config, query: queryToRun });
         },
         enabled: !!config && !!queryToRun,
-        retry: false,
-        refetchInterval: refreshInterval,
+        refetchInterval,
     });
+
+    const totalRowCount = isHogQL ? countData : data?.results?.length;
 
     return {
         savedQueries,
@@ -88,7 +122,9 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         data,
         title,
         queryToRun,
-        isLoading: isLoading || isLoadingQueries || isLoadingInsights,
+        totalRowCount,
+        isServerPaginated: isHogQL,
+        isLoading: (isLoading || isLoadingQueries || isLoadingInsights),
         isFetching,
         isError,
         error,

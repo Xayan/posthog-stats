@@ -57,7 +57,6 @@ const POSTHOG_TABLES = [
 ];
 
 const PAGE_SIZES = [100, 250, 500, 1000];
-const MAX_FETCH_LIMIT = 1000;
 
 export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const [selectedView, setSelectedView] = useLocalStorage<string | null>('selectedView', null);
@@ -79,13 +78,15 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         data,
         title,
         queryToRun,
+        totalRowCount,
+        isServerPaginated,
         isLoading,
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, MAX_FETCH_LIMIT, refreshInterval, onSignOut);
+    } = usePostHogView(config, selectedView, pagination, refreshInterval, onSignOut);
 
-    // Reset state when view changes, but preserve column visibility from local storage
+    // Reset pagination when view changes
     React.useEffect(() => {
         setPagination(p => ({ ...p, pageIndex: 0 }));
         setSorting([]);
@@ -102,6 +103,10 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
             return rowObject;
         });
     }, [data?.columns, data?.results]);
+
+    const pageCount = isServerPaginated
+        ? totalRowCount != null ? Math.ceil(totalRowCount / pagination.pageSize) : -1
+        : undefined;
 
     const columns = React.useMemo<ColumnDef<Record<string, any>>[]>(() => {
         if (!data?.columns) return [];
@@ -154,6 +159,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
     const table = useReactTable({
         data: transformedData,
         columns,
+        pageCount,
         state: {
             sorting,
             columnVisibility,
@@ -168,6 +174,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         getSortedRowModel: getSortedRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
+        manualPagination: isServerPaginated,
     });
 
     return (
@@ -179,7 +186,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                         <div className="space-y-2">
                             <Label htmlFor="query-select">View</Label>
-                            <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
+                            <Select onValuechange={setSelectedView} value={selectedView ?? ""}>
                                 <SelectTrigger id="query-select" className="hover:bg-accent hover:text-accent-foreground">
                                     <SelectValue placeholder="Select a view to display" />
                                 </SelectTrigger>
