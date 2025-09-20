@@ -73,9 +73,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         } else if (type === 'table' && value && availableTables) {
             const table = availableTables.find(t => t.id === value);
             if (table) {
-                // Heuristic: if table.id is purely numeric, it's likely a warehouse table, use name. Otherwise, use id.
-                const tableNameForQuery = /^\d+$/.test(table.id) ? table.name : table.id;
-                baseQuery = `SELECT * FROM ${tableNameForQuery}`;
+                baseQuery = `SELECT * FROM ${table.id}`; // Revert to using table.id here
                 title = `Table: ${table.name}`;
                 isHogQL = true;
             }
@@ -117,14 +115,12 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
 
             // Count for available tables (excluding problematic ones)
             availableTables
-                .filter(t => !['cohort_people', 'groups'].includes(t.id))
+                .filter(t => !['cohort_people', 'groups'].includes(t.id)) // cohort_people is now removed from availableTables, but keeping this filter for robustness
                 .forEach(t => {
                     const viewId = `table__${t.id}`;
-                    // Heuristic: if t.id is purely numeric, it's likely a warehouse table, use name. Otherwise, use id.
-                    const tableNameForCountQuery = /^\d+$/.test(t.id) ? t.name : t.id;
                     const countQuery: HogQLQueryBody = {
                         kind: "HogQLQuery",
-                        query: `SELECT count(1) FROM ${tableNameForCountQuery}`
+                        query: `SELECT count(1) FROM ${t.id}` // Revert to using table.id here
                     };
                     countPromises.push(
                         runPostHogQuery({ ...config, query: countQuery })

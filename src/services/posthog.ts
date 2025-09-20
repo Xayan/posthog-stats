@@ -88,9 +88,9 @@ const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): 
 const getCoreSystemTables = (): TableInfo[] => [
     { name: 'Events', id: 'events' },
     { name: 'Persons', id: 'persons' },
-    { name: 'Cohort People', id: 'cohort_people' },
+    // { name: 'Cohort People', id: 'cohort_people' }, // Removed Cohort People
     { name: 'Groups', id: 'groups' },
-    { name: 'Sessions', id: 'sessions' }, // Added Sessions table
+    { name: 'Sessions', id: 'sessions' },
 ];
 
 // Combined function to fetch all available tables (warehouse and system)
