@@ -63,7 +63,8 @@ export const fetchInsights = async ({ projectId, apiKey, baseUrl }: ApiConfig) =
     return data.results as Insight[];
 };
 
-export const fetchAvailableTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
+// New function to fetch tables from the PostHog data warehouse connections
+const fetchWarehouseTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
     const apiRoot = getApiRoot(baseUrl);
     
     const response = await fetch(`${apiRoot}projects/${projectId}/warehouse_tables/`, {
@@ -74,15 +75,50 @@ export const fetchAvailableTables = async ({ projectId, apiKey, baseUrl }: ApiCo
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to fetch available tables. Check your credentials and permissions.');
+        throw new Error(errorData.detail || 'Failed to fetch warehouse tables. Check your credentials and permissions.');
     }
     const data = await response.json();
-    // Assuming the API returns an array of objects, each with 'name' and 'id'
     return data.results.map((table: { name: string; id: string }) => ({
         name: table.name,
         id: table.id
     }));
 };
+
+// New function to fetch system tables using HogQL SHOW TABLES
+const fetchSystemTables = async ({ projectId, apiKey, baseUrl }: ApiConfig): Promise<TableInfo[]> => {
+    const queryBody: HogQLQueryBody = {
+        kind: "HogQLQuery",
+        query: "SHOW TABLES"
+    };
+    const result = await runPostHogQuery({ projectId, apiKey, baseUrl, query: queryBody });
+    if (!result || !result.results) {
+        return [];
+    }
+    // Assuming SHOW TABLES returns a list of table names in the first column
+    return result.results.map((row: any[]) => ({
+        name: row[0],
+        id: row[0]
+    }));
+};
+
+// Combined function to fetch all available tables (warehouse and system)
+export const fetchAvailableTables = async (config: ApiConfig): Promise<TableInfo[]> => {
+    const [warehouseTables, systemTables] = await Promise.all([
+        fetchWarehouseTables(config),
+        fetchSystemTables(config)
+    ]);
+
+    const allTablesMap = new Map<string, TableInfo>();
+    
+    // Add system tables first
+    systemTables.forEach(table => allTablesMap.set(table.id, table));
+    
+    // Add warehouse tables, overwriting if there's a name collision (warehouse takes precedence)
+    warehouseTables.forEach(table => allTablesMap.set(table.id, table));
+
+    return Array.from(allTablesMap.values());
+};
+
 
 export type HogQLQueryBody = {
     kind: "HogQLQuery";
