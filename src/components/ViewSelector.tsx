@@ -16,24 +16,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { type SavedWarehouseQuery, type Insight } from "@/services/posthog";
-
-const POSTHOG_TABLES = [
-    { name: 'Persons', value: 'persons' },
-    { name: 'Events', value: 'events' },
-    { name: 'Sessions', value: 'sessions' },
-    { name: 'Groups', value: 'groups' },
-];
-
-interface AdditionalTable {
-  name: string;
-  id: string;
-}
+import { type SavedWarehouseQuery, type Insight, type TableInfo } from "@/services/posthog";
 
 interface ViewSelectorProps {
   savedQueries: SavedWarehouseQuery[] | undefined;
   insights: Insight[] | undefined;
-  additionalTables?: AdditionalTable[] | undefined;
+  availableTables: TableInfo[] | undefined;
   viewCounts: Map<string, number> | undefined;
   selectedView: string | null;
   onSelectView: (value: string | null) => void;
@@ -42,7 +30,7 @@ interface ViewSelectorProps {
 export const ViewSelector = ({
   savedQueries,
   insights,
-  additionalTables,
+  availableTables,
   viewCounts,
   selectedView,
   onSelectView,
@@ -50,23 +38,13 @@ export const ViewSelector = ({
   const [open, setOpen] = React.useState(false);
 
   const allViews = React.useMemo(() => {
-    const tables = POSTHOG_TABLES.map(t => {
-        const count = viewCounts?.get(`table__${t.value}`);
-        const label = count !== undefined ? `${t.name} (${count.toLocaleString()})` : t.name;
-        return {
-            value: `table__${t.value}`,
-            label: label,
-            group: "PostHog Tables",
-        };
-    });
-
-    const additional = additionalTables ? additionalTables.map(t => {
+    const tables = availableTables ? availableTables.map(t => {
         const count = viewCounts?.get(`table__${t.id}`);
         const label = count !== undefined ? `${t.name} (${count.toLocaleString()})` : t.name;
         return {
             value: `table__${t.id}`,
             label: label,
-            group: "Additional Tables",
+            group: "Available Tables",
         };
     }) : [];
 
@@ -86,12 +64,12 @@ export const ViewSelector = ({
         group: "Insights",
     })) : [];
 
-    return { tables, additional, custom, insightViews };
-  }, [savedQueries, insights, additionalTables, viewCounts]);
+    return { tables, custom, insightViews };
+  }, [savedQueries, insights, availableTables, viewCounts]);
 
   const currentViewLabel = React.useMemo(() => {
     if (!selectedView) return "Select a view to display...";
-    const all = [...allViews.tables, ...allViews.additional, ...allViews.custom, ...allViews.insightViews];
+    const all = [...allViews.tables, ...allViews.custom, ...allViews.insightViews];
     return all.find(v => v.value === selectedView)?.label ?? "Select a view to display...";
   }, [selectedView, allViews]);
 
@@ -118,41 +96,24 @@ export const ViewSelector = ({
           <CommandInput placeholder="Search views..." />
           <CommandList>
             <CommandEmpty>No view found.</CommandEmpty>
-            <CommandGroup heading="PostHog Tables">
-              {allViews.tables.map((view) => (
-                <CommandItem
-                  key={view.value}
-                  value={view.label}
-                  onSelect={() => handleSelect(view.value)}
-                >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selectedView === view.value ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {view.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-            {allViews.additional.length > 0 && (
-                <CommandGroup heading="Additional Tables">
-                {allViews.additional.map((view) => (
-                    <CommandItem
+            {allViews.tables.length > 0 && (
+              <CommandGroup heading="Available Tables">
+                {allViews.tables.map((view) => (
+                  <CommandItem
                     key={view.value}
                     value={view.label}
                     onSelect={() => handleSelect(view.value)}
-                    >
+                  >
                     <Check
-                        className={cn(
+                      className={cn(
                         "mr-2 h-4 w-4",
                         selectedView === view.value ? "opacity-100" : "opacity-0"
-                        )}
+                      )}
                     />
                     {view.label}
-                    </CommandItem>
+                  </CommandItem>
                 ))}
-                </CommandGroup>
+              </CommandGroup>
             )}
             {allViews.custom.length > 0 && (
                 <CommandGroup heading="Custom Views">

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { type PaginationState } from "@tanstack/react-table";
-import { fetchSavedWarehouseQueries, fetchInsights, runPostHogQuery, SavedWarehouseQuery, Insight, HogQLQueryBody, InsightVizNodeBody, PostHogQueryBody } from "@/services/posthog";
+import { fetchSavedWarehouseQueries, fetchInsights, fetchAvailableTables, runPostHogQuery, SavedWarehouseQuery, Insight, HogQLQueryBody, InsightVizNodeBody, PostHogQueryBody, TableInfo } from "@/services/posthog";
 import { showError } from "@/utils/toast";
 
 interface ApiConfig {
@@ -9,13 +9,6 @@ interface ApiConfig {
     apiKey: string;
     baseUrl: string;
 }
-
-const POSTHOG_TABLES = [
-    { name: 'Persons', value: 'persons' },
-    { name: 'Events', value: 'events' },
-    { name: 'Sessions', value: 'sessions' },
-    { name: 'Groups', value: 'groups' },
-];
 
 export const usePostHogView = (config: ApiConfig | null, selectedView: string | null, pagination: PaginationState, refreshInterval: number, onAuthError: () => void) => {
     const { data: savedQueries, isLoading: isLoadingQueries, isError: isQueriesError, error: queriesError } = useQuery<SavedWarehouseQuery[], Error>({
@@ -38,6 +31,16 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         retry: false,
     });
 
+    const { data: availableTables, isLoading: isLoadingTables, isError: isTablesError, error: tablesError } = useQuery<TableInfo[], Error>({
+        queryKey: ['availableTables', config],
+        queryFn: () => {
+            if (!config) throw new Error("Config not set");
+            return fetchAvailableTables(config);
+        },
+        enabled: !!config,
+        retry: false,
+    });
+
     React.useEffect(() => {
         if (isQueriesError && queriesError) {
             showError(queriesError.message);
@@ -47,7 +50,11 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             showError(insightsError.message);
             onAuthError();
         }
-    }, [isQueriesError, queriesError, isInsightsError, insightsError, onAuthError]);
+        if (isTablesError && tablesError) {
+            showError(tablesError.message);
+            onAuthError();
+        }
+    }, [isQueriesError, queriesError, isInsightsError, insightsError, isTablesError, tablesError, onAuthError]);
 
     const { viewType, viewValue, baseQuery, title, isHogQL, insightQuery } = React.useMemo(() => {
         const [type, value] = selectedView ? selectedView.split('__') : [null, null];
@@ -63,11 +70,13 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                 title = query.name;
                 isHogQL = true;
             }
-        } else if (type === 'table' && value) {
-            baseQuery = `SELECT * FROM ${value}`;
-            const tableDef = POSTHOG_TABLES.find(t => t.value === value);
-            title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${value}`;
-            isHogQL = true;
+        } else if (type === 'table' && value && availableTables) {
+            const table = availableTables.find(t => t.id === value);
+            if (table) {
+                baseQuery = `SELECT * FROM ${value}`;
+                title = `Table: ${table.name}`;
+                isHogQL = true;
+            }
         } else if (type === 'insight' && value && insights) {
             const insight = insights.find(i => i.short_id === value);
             if (insight && insight.query) {
@@ -76,19 +85,19 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             }
         }
         return { viewType: type, viewValue: value, baseQuery, title, isHogQL, insightQuery };
-    }, [selectedView, savedQueries, insights]);
+    }, [selectedView, savedQueries, insights, availableTables]);
 
     const { data: viewCounts } = useQuery<Map<string, number>, Error>({
-        queryKey: ['batchCounts', config, savedQueries],
+        queryKey: ['batchCounts', config, savedQueries, availableTables],
         queryFn: async () => {
-            if (!config || !savedQueries) return new Map();
+            if (!config || !savedQueries || !availableTables) return new Map();
 
             const customQueries = savedQueries.map(q => 
                 `SELECT '${`custom__${q.id}`}' as view_id, count() as total FROM (${q.query.query})`
             );
 
-            const tableQueries = POSTHOG_TABLES.map(t => 
-                `SELECT '${`table__${t.value}`}' as view_id, count() as total FROM ${t.value}`
+            const tableQueries = availableTables.map(t => 
+                `SELECT '${`table__${t.id}`}' as view_id, count() as total FROM ${t.id}`
             );
 
             const allCountQueries = [...customQueries, ...tableQueries];
@@ -109,7 +118,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
             }
             return countsMap;
         },
-        enabled: !!config && !!savedQueries,
+        enabled: !!config && !!savedQueries && !!availableTables,
         refetchInterval: refreshInterval > 0 ? refreshInterval : false,
     });
 
@@ -143,13 +152,14 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
     return {
         savedQueries,
         insights,
+        availableTables,
         viewCounts,
         data,
         title,
         queryToRun,
         totalRowCount,
         isServerPaginated: isHogQL,
-        isLoading: (isLoading || isLoadingQueries || isLoadingInsights),
+        isLoading: (isLoading || isLoadingQueries || isLoadingInsights || isLoadingTables),
         isFetching,
         isError,
         error,

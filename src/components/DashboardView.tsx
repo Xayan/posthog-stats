@@ -64,9 +64,14 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         pageSize: 100,
     });
 
+    const handleAuthError = React.useCallback(() => {
+        onSignOut();
+    }, [onSignOut]);
+
     const {
         savedQueries,
         insights,
+        availableTables,
         viewCounts,
         data,
         title,
@@ -77,7 +82,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         isFetching,
         isError,
         error,
-    } = usePostHogView(config, selectedView, pagination, refreshInterval, onSignOut);
+    } = usePostHogView(config, selectedView, pagination, refreshInterval, handleAuthError);
 
     // Reset pagination when view changes
     React.useEffect(() => {
@@ -174,7 +179,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
         <>
             <ConnectionInfo projectId={config.projectId} onSignOut={onSignOut} />
 
-            {(savedQueries || insights) && (
+            {(savedQueries || insights || availableTables) && (
                 <section>
                     <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                         <div className="space-y-2">
@@ -182,6 +187,7 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                             <ViewSelector
                                 savedQueries={savedQueries}
                                 insights={insights}
+                                availableTables={availableTables}
                                 viewCounts={viewCounts}
                                 selectedView={selectedView}
                                 onSelectView={setSelectedView}
@@ -229,9 +235,9 @@ export const DashboardView = ({ config, onSignOut }: DashboardViewProps) => {
                 </section>
             )}
 
-            {(!savedQueries || savedQueries.length === 0) && (!insights || insights.length === 0) && !isLoading && (
+            {(!savedQueries || savedQueries.length === 0) && (!insights || insights.length === 0) && (!availableTables || availableTables.length === 0) && !isLoading && (
                  <div className="text-center py-12">
-                    <p className="text-muted-foreground">No saved Data Warehouse queries or insights found for this project.</p>
+                    <p className="text-muted-foreground">No saved Data Warehouse queries, insights, or tables found for this project.</p>
                 </div>
             )}
 
