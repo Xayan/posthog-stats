@@ -23,13 +23,12 @@ interface QueryResultTableProps {
     columns: string[];
     results: (string | number | boolean | null)[][];
   };
+  selectedFields: string[] | null;
 }
 
-export const QueryResultTable = ({ data }: QueryResultTableProps) => {
+export const QueryResultTable = ({ data, selectedFields }: QueryResultTableProps) => {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
-  // TanStack Table works best with an array of objects.
-  // We need to transform the incoming data structure.
   const transformedData = React.useMemo(() => {
     if (!data.results || !data.columns) return [];
     return data.results.map(row => {
@@ -41,31 +40,35 @@ export const QueryResultTable = ({ data }: QueryResultTableProps) => {
     });
   }, [data.columns, data.results]);
 
-  // Dynamically create column definitions from the columns array.
   const columns = React.useMemo<ColumnDef<Record<string, any>>[]>(() => {
     if (!data.columns) return [];
-    return data.columns.map(columnName => ({
-      accessorKey: columnName,
-      header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            className="px-2 py-1 -ml-2"
-          >
-            {columnName}
-            {column.getIsSorted() === 'asc' && <ArrowUp className="ml-2 h-4 w-4" />}
-            {column.getIsSorted() === 'desc' && <ArrowDown className="ml-2 h-4 w-4" />}
-            {column.getIsSorted() === false && <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
-          </Button>
-        )
-      },
-      cell: ({ row }) => {
-        const value = row.getValue(columnName);
-        return value === null ? <em className="text-muted-foreground">null</em> : String(value);
-      },
+
+    const columnsToDisplay = selectedFields === null ? data.columns : selectedFields;
+
+    return data.columns
+      .filter(columnName => columnsToDisplay.includes(columnName))
+      .map(columnName => ({
+        accessorKey: columnName,
+        header: ({ column }) => {
+          return (
+            <Button
+              variant="ghost"
+              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+              className="px-2 py-1 -ml-2"
+            >
+              {columnName}
+              {column.getIsSorted() === 'asc' && <ArrowUp className="ml-2 h-4 w-4" />}
+              {column.getIsSorted() === 'desc' && <ArrowDown className="ml-2 h-4 w-4" />}
+              {column.getIsSorted() === false && <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />}
+            </Button>
+          )
+        },
+        cell: ({ row }) => {
+          const value = row.getValue(columnName);
+          return value === null ? <em className="text-muted-foreground">null</em> : String(value);
+        },
     }));
-  }, [data.columns]);
+  }, [data.columns, selectedFields]);
 
   const table = useReactTable({
     data: transformedData,
@@ -80,6 +83,10 @@ export const QueryResultTable = ({ data }: QueryResultTableProps) => {
 
   if (!data || !data.results || data.results.length === 0) {
     return <p className="text-center text-muted-foreground">No results to display.</p>;
+  }
+
+  if (columns.length === 0) {
+    return <p className="text-center text-muted-foreground">No fields selected. Use the 'Fields' dropdown to select columns to display.</p>;
   }
 
   return (
@@ -122,7 +129,7 @@ export const QueryResultTable = ({ data }: QueryResultTableProps) => {
               </TableCell>
             </TableRow>
           )}
-        </TableBody>
+        </Body>
       </Table>
     </div>
   );

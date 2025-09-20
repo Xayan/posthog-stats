@@ -1,6 +1,4 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { runHogQLQuery } from "@/services/posthog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
@@ -8,22 +6,16 @@ import { QueryResultTable } from "./QueryResultTable";
 
 interface QueryDisplayProps {
   title: string;
-  query: string;
-  projectId: string;
-  apiKey: string;
-  region: string;
+  data: any;
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+  isFetching: boolean;
   refetchInterval: number;
+  selectedFields: string[] | null;
 }
 
-export const QueryDisplay = ({ title, query, projectId, apiKey, region, refetchInterval }: QueryDisplayProps) => {
-  const { data, isLoading, isError, error, isFetching } = useQuery({
-    queryKey: ['hogqlQuery', projectId, query],
-    queryFn: () => runHogQLQuery({ projectId, apiKey, region, query }),
-    enabled: !!query && !!projectId && !!apiKey,
-    retry: false,
-    refetchInterval: refetchInterval,
-  });
-
+export const QueryDisplay = ({ title, data, isLoading, isError, error, isFetching, refetchInterval, selectedFields }: QueryDisplayProps) => {
   const [timerVisual, setTimerVisual] = React.useState("[   ]");
 
   React.useEffect(() => {
@@ -70,13 +62,13 @@ export const QueryDisplay = ({ title, query, projectId, apiKey, region, refetchI
         <Alert variant="destructive">
           <Terminal className="h-4 w-4" />
           <AlertTitle>Query Error</AlertTitle>
-          <AlertDescription>{error.message}</AlertDescription>
+          <AlertDescription>{error?.message}</AlertDescription>
         </Alert>
       );
     }
   
     if (data) {
-      return <QueryResultTable data={data} />;
+      return <QueryResultTable data={data} selectedFields={selectedFields} />;
     }
   
     return null;

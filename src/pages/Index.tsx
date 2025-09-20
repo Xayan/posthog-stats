@@ -13,11 +13,12 @@ import {
 } from "@/components/ui/select";
 import { MadeWithDyad } from "@/components/made-with-dyad";
 import { showError } from "@/utils/toast";
-import { fetchSavedWarehouseQueries, SavedWarehouseQuery } from "@/services/posthog";
+import { fetchSavedWarehouseQueries, runHogQLQuery } from "@/services/posthog";
 import { QueryDisplay } from "@/components/QueryDisplay";
 import { ConnectionInfo } from "@/components/ConnectionInfo";
 import { ConfigurationForm } from "@/components/ConfigurationForm";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { FieldSelector } from "@/components/FieldSelector";
 
 interface ApiConfig {
     projectId: string;
@@ -87,6 +88,27 @@ const Index = () => {
         title = tableDef ? `PostHog Table: ${tableDef.name}` : `PostHog Table: ${viewValue}`;
     }
 
+    const { data, isLoading, isError, error, isFetching } = useQuery({
+        queryKey: ['hogqlQuery', config, queryToRun],
+        queryFn: () => {
+            if (!config || !queryToRun) throw new Error("Configuration or query is missing.");
+            return runHogQLQuery({ ...config, query: queryToRun });
+        },
+        enabled: !!config && !!queryToRun,
+        retry: false,
+        refetchInterval: refreshInterval,
+    });
+
+    const allFields = React.useMemo(() => data?.columns || [], [data]);
+    const storageKey = selectedView ? `selectedFields_${selectedView}` : 'selectedFields_null';
+    const [selectedFields, setSelectedFields] = useLocalStorage<string[] | null>(storageKey, null);
+
+    React.useEffect(() => {
+        if (allFields.length > 0 && selectedFields === null) {
+            setSelectedFields(allFields);
+        }
+    }, [allFields, selectedFields, setSelectedFields]);
+
     return (
         <div className="container mx-auto p-4 md:p-8">
             <header className="text-center mb-8">
@@ -104,7 +126,7 @@ const Index = () => {
 
                     {savedQueries && (
                         <section>
-                            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto mb-8">
+                            <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto mb-8">
                                 <div className="space-y-2">
                                     <Label htmlFor="query-select">View</Label>
                                     <Select onValueChange={setSelectedView} value={selectedView ?? ""}>
@@ -136,6 +158,15 @@ const Index = () => {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <div className="space-y-2">
+                                    <Label>Fields</Label>
+                                    <FieldSelector
+                                        allFields={allFields}
+                                        selectedFields={selectedFields || []}
+                                        onSelectionChange={setSelectedFields}
+                                        disabled={!selectedView || allFields.length === 0}
+                                    />
+                                </div>
                             </div>
                         </section>
                     )}
@@ -150,9 +181,13 @@ const Index = () => {
                         {queryToRun && title && config && (
                             <QueryDisplay 
                                 title={title}
-                                query={queryToRun} 
-                                {...config} 
-                                refetchInterval={refreshInterval} 
+                                data={data}
+                                isLoading={isLoading}
+                                isError={isError}
+                                error={error as Error | null}
+                                isFetching={isFetching}
+                                refetchInterval={refreshInterval}
+                                selectedFields={selectedFields}
                             />
                         )}
                     </section>
