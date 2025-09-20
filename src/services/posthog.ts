@@ -127,6 +127,7 @@ interface RunQueryConfig extends ApiConfig {
 
 export const runPostHogQuery = async ({ projectId, apiKey, baseUrl, query }: RunQueryConfig) => {
     const apiRoot = getApiRoot(baseUrl);
+    console.log("Running PostHog query:", JSON.stringify(query, null, 2)); // Log the query
     const response = await fetch(`${apiRoot}projects/${projectId}/query`, {
         method: 'POST',
         headers: {
@@ -137,7 +138,10 @@ export const runPostHogQuery = async ({ projectId, apiKey, baseUrl, query }: Run
     });
     if (!response.ok) {
         const errorData = await response.json();
+        console.error("PostHog query error:", errorData); // Log error
         throw new Error(errorData.detail || 'Failed to run query.');
     }
-    return response.json();
+    const result = await response.json();
+    console.log("PostHog query result:", result); // Log result
+    return result;
 };

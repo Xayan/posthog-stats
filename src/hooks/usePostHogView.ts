@@ -87,7 +87,7 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
         return { viewType: type, viewValue: value, baseQuery, title, isHogQL, insightQuery };
     }, [selectedView, savedQueries, insights, availableTables]);
 
-    const { data: viewCounts } = useQuery<Map<string, number>, Error>({
+    const { data: viewCounts, isError: isViewCountsError, error: viewCountsError } = useQuery<Map<string, number>, Error>({
         queryKey: ['batchCounts', config, savedQueries, availableTables],
         queryFn: async () => {
             if (!config || !savedQueries || !availableTables) return new Map();
@@ -116,11 +116,18 @@ export const usePostHogView = (config: ApiConfig | null, selectedView: string | 
                     countsMap.set(row[0], row[1]);
                 });
             }
+            console.log("View Counts Map:", countsMap); // Log the map
             return countsMap;
         },
         enabled: !!config && !!savedQueries && !!availableTables,
         refetchInterval: refreshInterval > 0 ? refreshInterval : false,
     });
+
+    React.useEffect(() => {
+        if (isViewCountsError && viewCountsError) {
+            showError(`Failed to fetch view counts: ${viewCountsError.message}`);
+        }
+    }, [isViewCountsError, viewCountsError]);
 
     const queryToRun = React.useMemo<PostHogQueryBody | null>(() => {
         if (isHogQL && baseQuery) {
