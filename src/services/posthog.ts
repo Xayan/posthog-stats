@@ -57,10 +57,15 @@ type HogQLQueryBody = {
 
 type SavedInsightNodeBody = {
     kind: "SavedInsightNode";
-    shortId: string; // Changed from 'id' to 'shortId'
+    shortId: string;
 };
 
-type PostHogQueryBody = HogQLQueryBody | SavedInsightNodeBody;
+type InsightVizNodeBody = {
+    kind: "InsightVizNode";
+    source: SavedInsightNodeBody;
+};
+
+type PostHogQueryBody = HogQLQueryBody | InsightVizNodeBody;
 
 interface RunQueryConfig extends ApiConfig {
     query: PostHogQueryBody;

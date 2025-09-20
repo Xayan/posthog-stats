@@ -87,7 +87,6 @@ const Index = () => {
 
     const [viewType, viewValue] = selectedView ? selectedView.split('__') : [null, null];
 
-    // Explicitly type queryToRun as PostHogQueryBody | null
     let queryToRun: Parameters<typeof runPostHogQuery>[0]['query'] | null = null;
     let title: string | null = null;
 
@@ -104,7 +103,7 @@ const Index = () => {
     } else if (viewType === 'insight' && viewValue && insights) {
         const insight = insights.find(i => i.short_id === viewValue);
         if (insight) {
-            queryToRun = { kind: "SavedInsightNode", shortId: insight.short_id };
+            queryToRun = { kind: "InsightVizNode", source: { kind: "SavedInsightNode", shortId: insight.short_id } };
             title = `Insight: ${insight.name}`;
         }
     }
