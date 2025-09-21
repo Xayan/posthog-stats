@@ -1,15 +1,7 @@
 services:
-  bolt-diy:
-    image: mahakoala777/bolt-diy:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - bolt-diy-data:/app/data
   bolt:
-    image: beberhardt/bolt.diy.prebuilddocker
+    image: hipnologo/bolt.diy:latest
     ports:
       - "5173:5173"
     environment:
-      - OPEN_ROUTER_API_KEY=ABC
-volumes:
-  bolt-diy-data:
+      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY}
